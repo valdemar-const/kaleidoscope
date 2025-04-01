@@ -22,7 +22,7 @@ author = 'Vladimir Novikov'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['myst_parser']
+extensions = ['sphinx.ext.graphviz', 'myst_parser', 'breathe']
 
 source_suffix = {
     '.rst': 'restructuredtext',
@@ -62,3 +62,9 @@ rst_epilog = f"""
 .. |project_name| replace::    {project}
 .. |project_version| replace:: {release}
 """
+
+# -- Breathe settings
+
+breathe_projects = {'@DOXYGEN_PROJECT@': '@DOXYGEN_OUTPUT@/xml'}
+
+breathe_default_project = project

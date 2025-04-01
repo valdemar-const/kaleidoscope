@@ -11,4 +11,4 @@
    :maxdepth: 1
    :caption: Содержание:
 
-   index
+   api/api

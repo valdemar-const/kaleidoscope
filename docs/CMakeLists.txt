@@ -18,7 +18,7 @@ set(SPHINX_BUILD_DIR  ${CMAKE_BINARY_DIR}/docs/sphinx-build)
 
 set(DOXYGEN_PROJECT         ${CMAKE_PROJECT_NAME})
 set(DOXYGEN_PROJECT_VERSION ${CMAKE_PROJECT_VERSION})
-set(DOXYGEN_INPUT           ${KaleidoscopeCompiler_SOURCE_DIR})
+set(DOXYGEN_INPUT           ${CMAKE_SOURCE_DIR}/projects/lib/kaleidoscope)
 set(DOXYGEN_OUTPUT          ${CMAKE_BINARY_DIR}/docs/doxygen-build)
 
 list(APPEND EXCLUDE_PATTERNS "*/tests/*" "*/src/*")
