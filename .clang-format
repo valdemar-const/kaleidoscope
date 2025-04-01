@@ -1,0 +1,61 @@
+BasedOnStyle: WebKit
+AccessModifierOffset: -2
+AlignAfterOpenBracket: BlockIndent
+AlignConsecutiveAssignments:
+  Enabled: true
+  AlignCompound: true
+AlignConsecutiveBitFields:
+  Enabled: true
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveMacros:
+  Enabled: true
+  AlignCompound: true
+  PadOperators: true
+AlignOperands: AlignAfterOperator
+AlignTrailingComments:
+  Kind: Always
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
+AlwaysBreakAfterDefinitionReturnType: All
+AlwaysBreakBeforeMultilineStrings: true
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBraces: Allman
+BreakInheritanceList: BeforeComma
+BreakStringLiterals: false
+ContinuationIndentWidth: 8
+Cpp11BracedListStyle: true
+EmptyLineAfterAccessModifier: Always
+FixNamespaceComments: true
+IndentCaseBlocks: true
+IndentExternBlock: NoIndent
+IndentGotoLabels: false
+InsertBraces: true
+InsertNewlineAtEOF: true
+PackConstructorInitializers: Never
+PointerAlignment: Right
+QualifierAlignment: Left
+ReferenceAlignment: Right
+SeparateDefinitionBlocks: Always
+ShortNamespaceLines: 0
+SortIncludes: Never
+SortUsingDeclarations: false
+SpaceAfterTemplateKeyword: false
+SpaceAroundPointerQualifiers: Both
+SpaceInEmptyBlock: false
+SpacesInContainerLiterals: false
+Language: Cpp
+AlwaysBreakAfterReturnType: AllDefinitions
+AlwaysBreakTemplateDeclarations: Yes
+KeepEmptyLinesAtTheStartOfBlocks: false
+SpaceInEmptyParentheses: false
+SpacesInConditionalStatement: false
+SpacesInParentheses: false

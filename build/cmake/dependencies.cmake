@@ -1,0 +1,21 @@
+if (USE_CPM)
+  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/modules/3rdparty)
+
+  include(CPM)
+
+  if (NOT CPM_PRELOAD)
+    if (DEFINED ENV{CPM_PRELOAD})
+      file(TO_CMAKE_PATH  $ENV{CPM_PRELOAD} CPM_PRELOAD)
+    elseif(CPM_DOWNLOAD)
+      message(FATAL_ERROR "Please set dependencies archives search path: -DCPM_PRELOAD=/path/to/cpm_preload")
+    endif()
+  endif()
+
+  if(NOT CPM_SOURCE_CACHE)
+    if(DEFINED ENV{CPM_SOURCE_CACHE})
+      file(TO_CMAKE_PATH  $ENV{CPM_SOURCE_CACHE} CPM_SOURCE_CACHE)
+    else()
+      message(FATAL_ERROR "Please set CPM_SOURCE_CACHE configure variable or environment variable: -DCPM_SOURCE_CACHE=/path/to/cpm_cache")
+    endif()
+  endif()
+endif()

@@ -1,0 +1,64 @@
+from pathlib import Path
+
+# Configuration file for the Sphinx documentation builder.
+#
+# For the full list of built-in configuration values, see the documentation:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
+
+# -- Project information -----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+
+source_dir = Path('@SPHINX_SOURCE_DIR@')
+build_dir  = Path('@SPHINX_BUILD_DIR@')
+
+print(f"SPHINX_SOURCE_DIR={source_dir}")
+print(f"SPHINX_BUILD_DIR={build_dir}")
+
+project = '@DOXYGEN_PROJECT@'
+release = '@DOXYGEN_PROJECT_VERSION@'
+copyright = '2025, Vladimir Novikov'
+author = 'Vladimir Novikov'
+
+# -- General configuration ---------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
+extensions = ['myst_parser']
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
+
+templates_path = [str(source_dir / '_templates')]
+exclude_patterns = []
+
+language = 'ru'
+
+# -- Options for HTML output -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+
+html_theme = 'sphinx_rtd_theme'
+html_static_path = [str(source_dir / '_static')]
+
+# -- Read The Docs theme config
+
+html_theme_options = {
+    # 'prev_next_buttons_location': 'both',
+    # 'flyout_display': 'attached',
+    # 'version_selector': True,
+    # 'language_selector': True,
+    # Toc options
+    # 'collapse_navigation': True,
+    # 'sticky_navigation': True,
+    # 'navigation_depth': 4,
+    # 'includehidden': True,
+    # 'titles_only': False
+}
+
+# -- Global symbols
+
+rst_epilog = f"""
+.. |project_name| replace::    {project}
+.. |project_version| replace:: {release}
+"""

@@ -1,0 +1,84 @@
+# base libraries
+
+[[build]]
+name    = "gsl"
+version = "4.1.0"
+url     = "https://github.com/microsoft/GSL.git"
+
+[[build]]
+name    = "entt"
+version = "3.14.0"
+url     = "https://github.com/skypjack/entt.git"
+
+[[build]]
+name    = "anyany"
+version = "1.0.0"
+url     = "https://github.com/kelbon/AnyAny.git"
+
+[[build]]
+name    = "boost"
+version = "1.87.0"
+url     = "https://github.com/boostorg/boost.git"
+
+# file formats support
+
+[[build]]
+name    = "tomlplusplus"
+version = "3.4.0"
+url     = "https://github.com/marzer/tomlplusplus.git"
+
+# graphics
+
+[[build]]
+name    = "emscripten-glfw"
+version = "3.4"
+url     = "https://github.com/pongasoft/emscripten-glfw.git"
+
+[[build]]
+name    = "glfw"
+version = "3.4"
+url     = "https://github.com/glfw/glfw.git"
+
+[[build]]
+name    = "sfml"
+version = "3.0.0"
+url     = "https://github.com/SFML/SFML.git"
+
+[[build]]
+name    = "glad"
+version = "2.0.8"
+url     = "https://github.com/Dav1dde/glad.git"
+
+[[build]]
+name    = "glm"
+version = "1.0.1"
+url     = "https://github.com/g-truc/glm.git"
+
+[[build]]
+name    = "ogre"
+version = "14.3.2"
+url     = "https://github.com/OGRECave/ogre.git"
+
+# image processing
+
+[[build]]
+name    = "cimg"
+version = "3.5.2"
+url     = "https://github.com/GreycLab/CImg.git"
+
+# gui
+
+[[build]]
+name    = "wxWidgets"
+version = "3.2.6"
+url     = "https://github.com/wxWidgets/wxWidgets.git"
+
+[[build]]
+name    = "fltk"
+version = "1.4.2"
+url     = "https://github.com/fltk/fltk.git"
+
+[[build]]
+name    = "rmlui"
+version = "6.0"
+url     = "https://github.com/mikke89/RmlUi.git"
