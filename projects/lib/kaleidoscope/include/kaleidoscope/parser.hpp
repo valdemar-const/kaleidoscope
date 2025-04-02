@@ -24,8 +24,9 @@ namespace kaleidoscope
 
 struct Parser
 {
+    using Result = Ast;
     template<concepts::TriviallyCopyableIterator T>
-    static Ast parse(T begin, T end);
+    static Result parse(T begin, T end);
 };
 
 } // namespace kaleidoscope

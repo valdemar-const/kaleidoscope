@@ -5,14 +5,24 @@ namespace kaleidoscope
 {
 
 template<>
-Ast
+Parser::Result
 Parser::parse<SpanIterator>(SpanIterator begin, SpanIterator end)
 {
     using namespace boost::spirit::x3;
+    Parser::Result result;
 
-    Ast out;
-    bool is_full_parsed = phrase_parse(begin, end, parser::grammar::chunk, parser::grammar::skipper, out) && (begin == end);
-    return out;
+    std::vector<std::unique_ptr<ast::Node>> out;
+    bool                                    is_full_parsed =
+            phrase_parse(
+                    begin,
+                    end,
+                    parser::grammar::chunk,
+                    parser::grammar::skipper,
+                    out
+            )
+            && (begin == end);
+
+    return Parser::Result(std::move(out));
 }
 
 } // namespace kaleidoscope
