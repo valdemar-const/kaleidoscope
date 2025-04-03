@@ -6,6 +6,7 @@
 #include <functional>
 #include <typeindex>
 #include <unordered_map>
+#include <stdexcept>
 
 namespace kaleidoscope::ast::utils
 {
@@ -33,6 +34,10 @@ struct Visitor_Node_CRTP
         if (handlers.count(id))
         {
             handlers.at(id)(obj);
+        }
+        else
+        {
+            throw std::runtime_error(std::string("unregistered hundle for ") + id.name());
         }
         return *static_cast<V *>(this);
     }

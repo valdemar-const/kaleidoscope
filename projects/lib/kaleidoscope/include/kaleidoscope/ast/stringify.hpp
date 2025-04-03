@@ -3,6 +3,7 @@
 #include <kaleidoscope/ast/visitor.hpp>
 
 #include <string_view>
+#include <numeric>
 #include <type_traits>
 
 namespace kaleidoscope::ast::utils
@@ -38,9 +39,20 @@ to_string<Variable>(const Variable &node)
 
 template<>
 std::string
-to_string<Precedence_Agnostic_Expr>(const Precedence_Agnostic_Expr &node)
+to_string<Function_Declaration>(const Function_Declaration &node)
 {
-    return "to_string(expr) <- not implemented!";
+    auto arg_list =
+            std::accumulate(
+                    node.args.begin(),
+                    node.args.end(),
+                    std::string {},
+                    [](auto &&acc, auto &arg)
+                    {
+                        acc += (acc.empty()) ? arg : (", " + arg);
+                        return std::move(acc);
+                    }
+            );
+    return "def " + node.name + "(" + arg_list + ")";
 }
 
 } // namespace kaleidoscope::ast::utils
@@ -56,6 +68,51 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 [&](const ast::Lexeme_Numeric &obj)
                 {
                     value = to_string(obj);
+                }
+        );
+
+        register_handler<ast::Variable>(
+                [&](const ast::Variable &obj)
+                {
+                    value = to_string(obj);
+                }
+        );
+
+        register_handler<ast::Function_Declaration>(
+                [&](const ast::Function_Declaration &obj)
+                {
+                    value = to_string(obj);
+                }
+        );
+
+        register_handler<ast::Functional_Call>(
+                [&](const ast::Functional_Call &obj)
+                {
+                    std::string result  = obj.callee + "(";
+                    result             += std::accumulate(
+                            obj.args.begin(),
+                            obj.args.end(),
+                            std::string {},
+                            [this](auto acc, auto &arg)
+                            {
+                                acc += (acc.empty()) ? std::string {this->visit(*arg).result()} : ", " + std::string {this->visit(*arg).result()};
+                                return std::move(acc);
+                            }
+                    );
+                    value = result + ")";
+                }
+        );
+
+        register_handler<ast::Precedence_Agnostic_Expr>(
+                [&](const ast::Precedence_Agnostic_Expr &obj)
+                {
+                    std::string result {this->visit(*obj.first).result()};
+                    result = "(" + result;
+                    for (auto &&[op, expr] : obj.operations)
+                    {
+                        result += " " + op + " " + std::string {this->visit(*expr).result()};
+                    }
+                    value = result + ")";
                 }
         );
     }
