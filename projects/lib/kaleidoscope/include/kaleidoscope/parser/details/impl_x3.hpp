@@ -47,7 +47,7 @@ const auto fun_decl_parsed = [](auto &ctx)
 
 const auto fun_def_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Function_Defenition(at_c<0>(_attr(ctx)), at_c<1>(_attr(ctx))));
+    _val(ctx).reset(new ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(at_c<1>(_attr(ctx)))));
 };
 
 const auto fun_call_parsed = [](auto &ctx)
@@ -114,7 +114,7 @@ const auto reserved = kw_def;
 const auto identifier_def      = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
 const auto identifier_list_def = (identifier % ',');
 const auto fun_decl_def        = (x3::lit("def") >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
-const auto fun_def_def         = (fun_decl >> '=' >> expr)[fun_def_parsed];
+const auto fun_def_def         = (fun_decl >> expr)[fun_def_parsed];
 const auto fun_call_def        = (identifier >> '(' >> expr_list >> ')')[fun_call_parsed];
 const auto variable_def        = identifier[variable_parsed];
 const auto number_def          = x3::double_[number_parsed];
@@ -131,8 +131,7 @@ const auto expr_next_def = (op >> simple)[expr_next_parsed];
 const auto expr_def      = (simple >> *(expr_next))[expr_parsed];
 const auto expr_list_def = (expr[emplace_to_vec] % ',');
 
-// const auto stmt_def      = (fun_def | fun_decl | expr)[variant_node_upcast];
-const auto stmt_def      = (fun_decl | expr)[variant_node_upcast];
+const auto stmt_def      = (fun_def | fun_decl | expr)[variant_node_upcast];
 const auto stmt_list_def = stmt[emplace_to_vec] % ';';
 const auto chunk_def     = stmt_list;
 
@@ -141,6 +140,7 @@ BOOST_SPIRIT_DEFINE(
         stmt_list,
         stmt,
         fun_decl,
+        fun_def,
         expr,
         expr_next,
         expr_list,
@@ -151,7 +151,6 @@ BOOST_SPIRIT_DEFINE(
         identifier_list,
         identifier
 );
-// fun_def,
 
 const auto comment = x3::lit('#') >> *(!x3::eol) >> x3::eol;
 const auto skipper = x3::ascii::space | comment;

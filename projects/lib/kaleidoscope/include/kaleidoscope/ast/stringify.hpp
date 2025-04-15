@@ -85,6 +85,15 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 }
         );
 
+        register_handler<ast::Function_Defenition>(
+                [&](const ast::Function_Defenition &obj)
+                {
+                    std::string result {this->visit(*obj.prototype).result()};
+                    result += " = " + std::string(this->visit(*obj.body).result());
+                    value   = result;
+                }
+        );
+
         register_handler<ast::Functional_Call>(
                 [&](const ast::Functional_Call &obj)
                 {
@@ -127,5 +136,12 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
 
     std::string value;
 };
+
+template<>
+std::string
+to_string<Node>(const Node &node)
+{
+    return Stringify {}.visit(node).result().data();
+}
 
 } // namespace kaleidoscope::ast::utils

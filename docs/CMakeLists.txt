@@ -21,7 +21,7 @@ set(DOXYGEN_PROJECT_VERSION ${CMAKE_PROJECT_VERSION})
 set(DOXYGEN_INPUT           ${CMAKE_SOURCE_DIR}/projects/lib/kaleidoscope)
 set(DOXYGEN_OUTPUT          ${CMAKE_BINARY_DIR}/docs/doxygen-build)
 
-list(APPEND EXCLUDE_PATTERNS "*/tests/*" "*/src/*")
+list(APPEND EXCLUDE_PATTERNS "*/tests/*" "*/src/*" "*/details/*")
 
 foreach(PATTERN IN LISTS EXCLUDE_PATTERNS)
   list(APPEND LIST_DOXYGEN_EXCLUDE_PATTERNS "\nEXCLUDE_PATTERNS      += ${PATTERN}")
