@@ -6,6 +6,24 @@
 #include <memory>
 #include <cinttypes>
 
+#include <concepts>
+#include <type_traits>
+
+namespace kaleidoscope::ast
+{
+struct Node; // forward decl
+} // namespace kaleidoscope::ast
+
+namespace kaleidoscope::traits
+{
+
+template<typename T>
+concept Ast_Node = requires {
+    requires std::is_base_of_v<ast::Node, T>;
+};
+
+} // namespace kaleidoscope::traits
+
 namespace kaleidoscope::ast
 {
 struct Node

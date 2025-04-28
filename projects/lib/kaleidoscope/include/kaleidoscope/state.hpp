@@ -41,13 +41,13 @@ struct state
     {
         using Precedence = size_t;
 
-        enum class Associativity
+        enum class Associativity : uint8_t
         {
             Left,
             Right
         };
 
-        enum class Kind
+        enum class Kind : uint8_t
         {
             Unary,
             Binary
@@ -55,7 +55,7 @@ struct state
 
         Kind          kind          = Kind::Binary;
         Associativity associativity = Associativity::Left;
-        Precedence    precedence    = 0;
+        Precedence    precedence    = 0; /**< lesser is higher */
     };
 
   public:
@@ -126,5 +126,5 @@ bool // clang-format off
 kaleidoscope::state::result::operator==<double>(const double &rhs) // clang-format on
 {
     double a = *this;
-    return *this == rhs;
+    return a == rhs;
 }

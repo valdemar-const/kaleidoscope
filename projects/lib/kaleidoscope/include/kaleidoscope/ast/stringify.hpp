@@ -48,11 +48,11 @@ to_string<Function_Declaration>(const Function_Declaration &node)
                     std::string {},
                     [](auto &&acc, auto &arg)
                     {
-                        acc += (acc.empty()) ? arg : (", " + arg);
+                        acc += (acc.empty()) ? arg : (" " + arg);
                         return std::move(acc);
                     }
             );
-    return "def " + node.name + "(" + arg_list + ")";
+    return "(func " + node.name + " (" + arg_list + "))";
 }
 
 } // namespace kaleidoscope::ast::utils
@@ -89,7 +89,8 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 [&](const ast::Function_Defenition &obj)
                 {
                     std::string result {this->visit(*obj.prototype).result()};
-                    result += " = " + std::string(this->visit(*obj.body).result());
+                    result.pop_back(); // удалить завершающую ')' у прототипа
+                    result += " " + std::string(this->visit(*obj.body).result());
                     value   = result;
                 }
         );
@@ -97,14 +98,14 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
         register_handler<ast::Functional_Call>(
                 [&](const ast::Functional_Call &obj)
                 {
-                    std::string result  = obj.callee + "(";
+                    std::string result  = "(" + obj.callee + " ";
                     result             += std::accumulate(
                             obj.args.begin(),
                             obj.args.end(),
                             std::string {},
                             [this](auto acc, auto &arg)
                             {
-                                acc += (acc.empty()) ? std::string {this->visit(*arg).result()} : ", " + std::string {this->visit(*arg).result()};
+                                acc += (acc.empty()) ? std::string {this->visit(*arg).result()} : " " + std::string {this->visit(*arg).result()};
                                 return std::move(acc);
                             }
                     );
@@ -124,9 +125,22 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                     value = result + ")";
                 }
         );
+
+        register_handler<ast::Operation_Binary>(
+                [&](const ast::Operation_Binary &obj)
+                {
+                    std::string result {
+                            obj.op
+                            + " " + std::string(this->visit(*obj.lhs).result())
+                            + " " + std::string(this->visit(*obj.rhs).result())
+                    };
+
+                    value = "(" + result + ")";
+                }
+        );
     }
 
-    const std::string_view
+    std::string_view
     result(void)
     {
         return value;
@@ -141,7 +155,7 @@ template<>
 std::string
 to_string<Node>(const Node &node)
 {
-    return Stringify {}.visit(node).result().data();
+    return std::string {Stringify {}.visit(node).result()};
 }
 
 } // namespace kaleidoscope::ast::utils

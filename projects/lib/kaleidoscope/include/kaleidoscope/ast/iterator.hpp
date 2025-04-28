@@ -1,0 +1,122 @@
+#pragma once
+
+#include <kaleidoscope/ast.hpp>
+#include <kaleidoscope/ast/visitor.hpp>
+
+#include <list>
+#include <vector>
+#include <iterator>
+#include <concepts>
+#include <type_traits>
+
+namespace kaleidoscope::ast::utils
+{
+
+template<traits::Ast_Node T>
+std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each(std::unique_ptr<T> &node)
+{
+    return {};
+}
+
+} // namespace kaleidoscope::ast::utils
+
+namespace kaleidoscope::ast::utils
+{
+
+template<>
+inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each<ast::Function_Defenition>(std::unique_ptr<ast::Function_Defenition> &node)
+{
+    return {std::ref(*reinterpret_cast<std::unique_ptr<ast::Node> *>(&node->prototype)), std::ref(node->body)};
+}
+
+template<>
+inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each<ast::Functional_Call>(std::unique_ptr<ast::Functional_Call> &node)
+{
+    using Result = std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>;
+
+    return std::accumulate(
+            node->args.begin(),
+            node->args.end(),
+            Result {},
+            [](auto acc, auto &&el)
+            {
+                acc.emplace_back(std::ref(el));
+                return std::move(acc);
+            }
+    );
+}
+
+template<>
+inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each<ast::Operation_Binary>(std::unique_ptr<ast::Operation_Binary> &node)
+{
+    return {std::ref(node->lhs), std::ref(node->rhs)};
+}
+
+template<>
+inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each<ast::Precedence_Agnostic_Expr>(std::unique_ptr<ast::Precedence_Agnostic_Expr> &node)
+{
+    using Result = std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>;
+    Result result {std::ref(node->first)};
+
+    auto args = std::accumulate(
+            node->operations.begin(),
+            node->operations.begin(),
+            Result {},
+            [](auto acc, auto &&el)
+            {
+                acc.emplace_back(std::ref(el.second));
+                return std::move(acc);
+            }
+    );
+    result.insert(result.end(), std::make_move_iterator(args.begin()), std::make_move_iterator(args.end()));
+
+    return result;
+}
+
+} // namespace kaleidoscope::ast::utils
+
+namespace kaleidoscope::ast::utils
+{
+
+struct Iterator_Recursive
+{
+    using iterator_concept = std::forward_iterator_tag;
+    using element_type     = std::reference_wrapper<std::unique_ptr<ast::Node>>;
+    using pointer_type     = ast::Node *;
+    using reference_type   = std::unique_ptr<ast::Node> &;
+    using Parents          = std::list<element_type>;
+
+    struct Next;
+
+    Iterator_Recursive(std::unique_ptr<ast::Node> &root, Parents parents = {})
+        : current_(std::ref(root))
+        , parents_(std::move(parents))
+        , next(std::make_unique<Next>())
+    {
+    }
+
+    reference_type operator*(void) const;
+    pointer_type   operator->(void) const;
+
+    Iterator_Recursive operator++(void);
+
+  protected:
+
+    element_type            current_;
+    std::list<element_type> parents_;
+    std::unique_ptr<Next>   next;
+};
+
+struct Iterator_Recursive::Next : public ast::utils::Visitor_Node_CRTP<Iterator_Recursive::Next, ast::Node>
+{
+    Next(void)
+    {
+    }
+};
+
+} // namespace kaleidoscope::ast::utils
