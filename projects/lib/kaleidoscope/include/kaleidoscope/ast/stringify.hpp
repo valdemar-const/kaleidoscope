@@ -52,7 +52,7 @@ to_string<Function_Declaration>(const Function_Declaration &node)
                         return std::move(acc);
                     }
             );
-    return "(func " + node.name + " (" + arg_list + "))";
+    return "(defun " + node.name + " (" + arg_list + "))";
 }
 
 } // namespace kaleidoscope::ast::utils
@@ -90,7 +90,7 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 {
                     std::string result {this->visit(*obj.prototype).result()};
                     result.pop_back(); // удалить завершающую ')' у прототипа
-                    result += " " + std::string(this->visit(*obj.body).result());
+                    result += " " + std::string(this->visit(*obj.body).result()) + ")";
                     value   = result;
                 }
         );
