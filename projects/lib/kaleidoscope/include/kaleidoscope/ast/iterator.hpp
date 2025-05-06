@@ -28,7 +28,22 @@ template<>
 inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
 each<ast::Function_Defenition>(std::unique_ptr<ast::Function_Defenition> &node)
 {
-    return {std::ref(*reinterpret_cast<std::unique_ptr<ast::Node> *>(&node->prototype)), std::ref(node->body)};
+    using Result = std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>;
+
+    auto stmts = std::accumulate(
+            node->body.begin(),
+            node->body.end(),
+            Result {},
+            [](auto acc, auto &&el)
+            {
+                acc.emplace_back(std::ref(el));
+                return std::move(acc);
+            }
+    );
+
+    Result result = {std::ref(*reinterpret_cast<std::unique_ptr<ast::Node> *>(&node->prototype))};
+    result.insert(result.end(), stmts.begin(), stmts.end());
+    return result;
 }
 
 template<>
@@ -54,6 +69,13 @@ inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
 each<ast::Operation_Binary>(std::unique_ptr<ast::Operation_Binary> &node)
 {
     return {std::ref(node->lhs), std::ref(node->rhs)};
+}
+
+template<>
+inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each<ast::Operation_Unary>(std::unique_ptr<ast::Operation_Unary> &node)
+{
+    return {std::ref(node->operand)};
 }
 
 template<>

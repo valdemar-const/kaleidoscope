@@ -35,6 +35,7 @@ struct precedence : ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast:
 
   protected:
 
+    void visit_(const ast::Operation_Unary &ast);
     void visit_(const ast::Function_Defenition &ast);
     void visit_(const ast::Functional_Call &ast);
     void visit_(const ast::Precedence_Agnostic_Expr &ast);
@@ -61,6 +62,9 @@ precedence::precedence(const Bin_Op_Precedence &precedence)
 {
     using namespace std::placeholders;
 
+    register_method_handler<ast::Operation_Unary>(
+            static_cast<void (precedence::*)(const ast::Operation_Unary &)>(&precedence::visit_)
+    );
     register_method_handler<ast::Function_Defenition>(
             static_cast<void (precedence::*)(const ast::Function_Defenition &)>(&precedence::visit_)
     );
@@ -109,15 +113,25 @@ precedence::result(void)
 }
 
 inline void
+precedence::visit_(const ast::Operation_Unary &ast)
+{
+    if (typeid(*ast.operand) == typeid(ast::Precedence_Agnostic_Expr))
+    {
+        const_cast<ast::Operation_Unary::Expression &>(ast.operand).reset(visit(*ast.operand).result().release());
+    }
+    visit(*ast.operand);
+}
+
+inline void
 precedence::visit_(const ast::Function_Defenition &ast)
 {
-    if (typeid(*ast.body) == typeid(ast::Precedence_Agnostic_Expr))
+    for (auto &&stmt : ast.body)
     {
-        const_cast<ast::Function_Defenition &>(ast).body.reset(visit(*ast.body).result().release());
-    }
-    else
-    {
-        visit(*ast.body);
+        if (typeid(*stmt) == typeid(ast::Precedence_Agnostic_Expr))
+        {
+            const_cast<ast::Function_Defenition::Statement &>(stmt).reset(visit(*stmt).result().release());
+        }
+        visit(*stmt);
     }
 }
 
@@ -140,11 +154,19 @@ precedence::visit_(const ast::Functional_Call &ast)
 inline void
 precedence::visit_(const ast::Precedence_Agnostic_Expr &ast)
 {
-    auto                  &input = ast.operations;
+    auto &input = ast.operations;
+    // Reverse Polish Notation
+    if (typeid(*ast.first) == typeid(ast::Precedence_Agnostic_Expr))
+    {
+        const_cast<ast::Precedence_Agnostic_Expr::Expression &>(ast.first).reset(visit(*ast.first).result().release());
+    }
+    else
+    {
+        visit(*ast.first);
+    }
+
     Output                 output {ast.first.get()};
     std::list<std::string> ops;
-
-    // Reverse Polish Notation
 
     for (auto &&op : input)
     {

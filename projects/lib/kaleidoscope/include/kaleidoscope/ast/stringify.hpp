@@ -5,6 +5,7 @@
 #include <string_view>
 #include <numeric>
 #include <type_traits>
+#include <format>
 
 namespace kaleidoscope::ast::utils
 {
@@ -23,7 +24,7 @@ to_string<Lexeme_Numeric>(const Lexeme_Numeric &node)
     std::visit(
             [&](auto &&v)
             {
-                result = std::to_string(v);
+                result = std::format("{:g}", v);
             },
             node.value
     );
@@ -90,8 +91,11 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 {
                     std::string result {this->visit(*obj.prototype).result()};
                     result.pop_back(); // удалить завершающую ')' у прототипа
-                    result += " " + std::string(this->visit(*obj.body).result()) + ")";
-                    value   = result;
+                    for (auto &&stmt : obj.body)
+                    {
+                        result += " " + std::string(this->visit(*stmt).result());
+                    }
+                    value = result + ")";
                 }
         );
 
@@ -123,6 +127,18 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                         result += " " + op + " " + std::string {this->visit(*expr).result()};
                     }
                     value = result + ")";
+                }
+        );
+
+        register_handler<ast::Operation_Unary>(
+                [&](const ast::Operation_Unary &obj)
+                {
+                    std::string result {
+                            obj.op
+                            + " " + std::string(this->visit(*obj.operand).result())
+                    };
+
+                    value = "(" + result + ")";
                 }
         );
 

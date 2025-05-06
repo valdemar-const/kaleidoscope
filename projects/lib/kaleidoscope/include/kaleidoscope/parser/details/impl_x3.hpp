@@ -3,6 +3,9 @@
 #include <kaleidoscope/parser/details/ast_fusion_adapt.hpp>
 #include <type_traits>
 
+#include <numeric>
+#include <iostream>
+
 #include <boost/spirit/home/x3.hpp>
 
 namespace kaleidoscope::parser::actions
@@ -47,7 +50,18 @@ const auto fun_decl_parsed = [](auto &ctx)
 
 const auto fun_def_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(at_c<1>(_attr(ctx)))));
+    auto &func_stmts = at_c<1>(_attr(ctx));
+    auto  converted  = std::accumulate(
+            func_stmts.begin(),
+            func_stmts.end(),
+            ast::Function_Defenition::Body {},
+            [](auto acc, auto &&elem)
+            {
+                acc.emplace_back(elem.release());
+                return std::move(acc);
+            }
+    );
+    _val(ctx).reset(new ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(converted)));
 };
 
 const auto fun_call_parsed = [](auto &ctx)
@@ -57,7 +71,26 @@ const auto fun_call_parsed = [](auto &ctx)
 
 const auto expr_next_parsed = [](auto &ctx)
 {
-    _val(ctx) = std::move(std::make_pair(at_c<0>(_attr(ctx)), std::move(at_c<1>(_attr(ctx)))));
+#if 1
+    auto &ops     = at_c<0>(_attr(ctx));
+    auto &operand = at_c<1>(_attr(ctx));
+    if (ops.size() == 1)
+    {
+        _val(ctx) = std::move(std::make_pair(ops.front(), std::move(operand)));
+    }
+    else if (ops.size() == 2)
+    {
+        _val(ctx) = std::move(std::make_pair(ops.front(), std::make_unique<ast::Operation_Unary>(ops.back(), std::move(operand))));
+    }
+    else
+    {
+        _pass(ctx) = false;
+    }
+#else
+    auto &op      = at_c<0>(_attr(ctx));
+    auto &operand = at_c<1>(_attr(ctx));
+    _val(ctx)     = std::move(std::make_pair(op, std::move(operand)));
+#endif
 };
 
 const auto expr_parsed = [](auto &ctx)
@@ -88,6 +121,7 @@ const x3::rule<class R_Chunk,     std::vector< std::unique_ptr< ast::Node       
 const x3::rule<class R_Stmt_List, std::vector< std::unique_ptr< ast::Node                     >>> stmt_list       = "statement-list";
 const x3::rule<class R_Stmt,                   std::unique_ptr< ast::Node                      >> stmt            = "statement";
 const x3::rule<class R_Fun_Decl,               std::unique_ptr< ast::Function_Declaration      >> fun_decl        = "function-declaration";
+const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node                     >>> fun_block       = "function-block";
 const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition       >> fun_def         = "function-defenition";
 const x3::rule<class R_Fun_Def,   std::vector< std::unique_ptr< ast::Node                     >>> expr_list       = "expression-list";
 const x3::rule<class R_Expr,                   std::unique_ptr< ast::Precedence_Agnostic_Expr  >> expr            = "expression-raw";
@@ -109,17 +143,19 @@ auto mkkw = [](std::string kw)
 };
 
 const auto kw_def   = mkkw("def");
-const auto reserved = kw_def;
+const auto kw_end   = mkkw("end");
+const auto reserved = kw_def | kw_end;
 
 const auto identifier_def      = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
 const auto identifier_list_def = (identifier % ',');
-const auto fun_decl_def        = (x3::lit("def") >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
-const auto fun_def_def         = (fun_decl >> expr)[fun_def_parsed];
+const auto fun_decl_def        = (kw_def >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
+const auto fun_block_def       = (expr[emplace_to_vec]) % ';';
+const auto fun_def_def         = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
 const auto fun_call_def        = (identifier >> '(' >> expr_list >> ')')[fun_call_parsed];
 const auto variable_def        = identifier[variable_parsed];
 const auto number_def          = x3::double_[number_parsed];
 
-const auto op = !identifier >> +(x3::char_ - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';');
+const auto op = +x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';')];
 const auto simple_def =
         (number
          | fun_call
@@ -140,6 +176,7 @@ BOOST_SPIRIT_DEFINE(
         stmt_list,
         stmt,
         fun_decl,
+        fun_block,
         fun_def,
         expr,
         expr_next,

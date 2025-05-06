@@ -23,10 +23,13 @@ main(int argc, const char *argv[])
             R"KALEIDOSCOPE(
                 def foo(a, b, c);
                 1;
-                g + 7;
+                g + -(7 + b) * -1;
                 a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f;
                 1;
-                def foo(a, b, c) a - b * c
+                def foo(a, b, c)
+                    (a - b) * c;
+                    a - b * c
+                end
             )KALEIDOSCOPE"s;
 
     {

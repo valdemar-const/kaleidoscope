@@ -91,7 +91,8 @@ struct Function_Declaration : public NodeCRTP<Function_Declaration>
 struct Function_Defenition : public NodeCRTP<Function_Defenition>
 {
     using Prototype = std::unique_ptr<Function_Declaration>;
-    using Body      = std::unique_ptr<Node>;
+    using Statement = std::unique_ptr<Node>;
+    using Body      = std::vector<Statement>;
 
     ~Function_Defenition(void) override = default;
 
@@ -120,6 +121,23 @@ struct Functional_Call : public NodeCRTP<Functional_Call>
 
     Callee callee;
     Args   args;
+};
+
+struct Operation_Unary : public NodeCRTP<Operation_Unary>
+{
+    using Operator   = std::string;
+    using Expression = std::unique_ptr<Node>;
+
+    ~Operation_Unary(void) override = default;
+
+    Operation_Unary(Operator op, Expression operand)
+        : op(op)
+        , operand(std::move(operand))
+    {
+    }
+
+    Operator   op;
+    Expression operand;
 };
 
 struct Operation_Binary : public NodeCRTP<Operation_Binary>

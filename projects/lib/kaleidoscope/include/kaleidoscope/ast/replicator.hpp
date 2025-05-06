@@ -70,7 +70,16 @@ inline replicator::replicator(void)
                                                 visit(*node.prototype).result().release()
                                         )
                                 ),
-                                visit(*node.body).result()
+                                std::accumulate(
+                                        node.body.begin(),
+                                        node.body.end(),
+                                        ast::Function_Defenition::Body {},
+                                        [&](auto acc, auto &&elem)
+                                        {
+                                            acc.emplace_back(visit(*elem).result());
+                                            return std::move(acc);
+                                        }
+                                )
                         )
                 );
             }
@@ -91,6 +100,16 @@ inline replicator::replicator(void)
                                     return std::move(acc);
                                 }
                         )
+                ));
+            }
+    );
+
+    register_handler<ast::Operation_Unary>(
+            [&](const ast::Operation_Unary &node)
+            {
+                result_.reset(new ast::Operation_Unary(
+                        node.op,
+                        visit(*node.operand).result()
                 ));
             }
     );
