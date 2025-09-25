@@ -87,7 +87,7 @@ each<ast::Precedence_Agnostic_Expr>(std::unique_ptr<ast::Precedence_Agnostic_Exp
 
     auto args = std::accumulate(
             node->operations.begin(),
-            node->operations.begin(),
+            node->operations.end(),
             Result {},
             [](auto acc, auto &&el)
             {
