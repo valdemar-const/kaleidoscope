@@ -163,7 +163,7 @@ inline void
 precedence::visit_(const ast::Precedence_Agnostic_Expr &ast)
 {
     auto &input = ast.operations;
-    // Reverse Polish Notation
+
     if (typeid(*ast.first) == typeid(ast::Precedence_Agnostic_Expr))
     {
         const_cast<ast::Precedence_Agnostic_Expr::Expression &>(ast.first).reset(visit(*ast.first).result().release());
@@ -173,54 +173,50 @@ precedence::visit_(const ast::Precedence_Agnostic_Expr &ast)
         visit(*ast.first);
     }
 
-    Output                 output {ast.first.get()};
-    std::list<std::string> ops;
+    Output                   output {ast.first.get()};
+    std::vector<std::string> ops;
 
-    for (auto &&op : input)
+    for (auto &[op_name, expr] : input)
     {
-        if (!precedence_.get().contains(op.first))
+        if (!precedence_.get().contains(op_name))
         {
-            throw std::runtime_error("Unknown operator precedence: " + op.first);
+            throw std::runtime_error("Unknown operator precedence: " + op_name);
         }
 
-        if (typeid(*op.second) == typeid(ast::Precedence_Agnostic_Expr))
+        if (typeid(*expr) == typeid(ast::Precedence_Agnostic_Expr))
         {
-            const_cast<ast::Precedence_Agnostic_Expr::Expression &>(op.second).reset(visit(*op.second).result().release());
+            const_cast<ast::Precedence_Agnostic_Expr::Expression &>(expr).reset(visit(*expr).result().release());
         }
         else
         {
-            visit(*op.second);
+            visit(*expr);
         }
 
-        auto &curr_info = precedence_.get().at(op.first);
+        auto &curr_info = precedence_.get().at(op_name);
 
-        if (!ops.empty())
+        while (!ops.empty())
         {
             auto &top_info = precedence_.get().at(ops.back());
-            if (top_info.precedence < curr_info.precedence)
+
+            if (top_info.precedence < curr_info.precedence
+                || (top_info.precedence == curr_info.precedence && top_info.associativity == Module::operator_properties::Associativity::Left))
             {
                 output.emplace_back(ops.back());
                 ops.pop_back();
-                ops.emplace_back(op.first);
-                output.emplace_back(op.second.get());
             }
             else
             {
-                ops.emplace_back(op.first);
-                output.emplace_back(op.second.get());
+                break;
             }
         }
-        else
-        {
-            ops.emplace_back(op.first);
-            output.emplace_back(op.second.get());
-        }
+
+        output.emplace_back(expr.get());
+        ops.push_back(op_name);
     }
 
     std::copy(ops.rbegin(), ops.rend(), std::back_insert_iterator(output));
     ops.clear();
 
-    // build Expression Priority Ast
     auto converted = pop_to_result(output);
 }
 

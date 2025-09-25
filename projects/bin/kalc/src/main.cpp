@@ -19,10 +19,58 @@ main(int argc, const char *argv[])
     using Kind          = kaleidoscope::state::operator_properties::Kind;
     using Associativity = kaleidoscope::state::operator_properties::Associativity;
 
-    std::string input =
+    // Given
+
+    const precedence::Bin_Op_Precedence operators = {
+            std::make_pair(
+                    "**",
+                    kaleidoscope::state::operator_properties {
+                            .kind          = Kind::Binary,
+                            .associativity = Associativity::Right,
+                            .precedence    = 0
+                    }
+            ),
+            std::make_pair(
+                    "*",
+                    kaleidoscope::state::operator_properties {
+                            .kind          = Kind::Binary,
+                            .associativity = Associativity::Left,
+                            .precedence    = 10
+                    }
+            ),
+            std::make_pair(
+                    "/",
+                    kaleidoscope::state::operator_properties {
+                            .kind          = Kind::Binary,
+                            .associativity = Associativity::Left,
+                            .precedence    = 10
+                    }
+            ),
+            std::make_pair(
+                    "+",
+                    kaleidoscope::state::operator_properties {
+                            .kind          = Kind::Binary,
+                            .associativity = Associativity::Left,
+                            .precedence    = 20
+                    }
+            ),
+            std::make_pair(
+                    "-",
+                    kaleidoscope::state::operator_properties {
+                            .kind          = Kind::Binary,
+                            .associativity = Associativity::Left,
+                            .precedence    = 20
+                    }
+            )
+    };
+
+#if 1
+    {
+        std::string input =
             R"KALEIDOSCOPE(
                 def foo(a, b, c);
                 1;
+                1 - 2 - 3 ** 5 ** 6 - 4;
                 5 + 5 * 2 - 1;
                 g + -(7 + b) * -1;
                 a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f;
@@ -33,45 +81,7 @@ main(int argc, const char *argv[])
                 end
             )KALEIDOSCOPE"s;
 
-    {
-        std::span<char> input_span {reinterpret_cast<char *>(input.data()), input.size()};
-
-        auto result = kaleidoscope::Parser::parse(input_span.begin(), input_span.end());
-
-        precedence::Bin_Op_Precedence operators = {
-                std::make_pair(
-                        "*",
-                        kaleidoscope::state::operator_properties {
-                                .kind          = Kind::Binary,
-                                .associativity = Associativity::Left,
-                                .precedence    = 0
-                        }
-                ),
-                std::make_pair(
-                        "/",
-                        kaleidoscope::state::operator_properties {
-                                .kind          = Kind::Binary,
-                                .associativity = Associativity::Left,
-                                .precedence    = 0
-                        }
-                ),
-                std::make_pair(
-                        "+",
-                        kaleidoscope::state::operator_properties {
-                                .kind          = Kind::Binary,
-                                .associativity = Associativity::Left,
-                                .precedence    = 1
-                        }
-                ),
-                std::make_pair(
-                        "-",
-                        kaleidoscope::state::operator_properties {
-                                .kind          = Kind::Binary,
-                                .associativity = Associativity::Left,
-                                .precedence    = 1
-                        }
-                )
-        };
+        auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
 
         precedence {operators}(result);
 
@@ -80,9 +90,20 @@ main(int argc, const char *argv[])
             std::cout << to_string(*node) << std::endl;
         }
     }
+#endif
+#if 1
+    {
+        std::string input {"1 ** 2 ** 3 - 4"};
 
-    // --------
-
+        auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+        precedence {operators}(result);
+        for (auto &&node : result.statements)
+        {
+            std::cout << to_string(*node) << std::endl;
+        }
+    }
+#endif
+#if 1
     {
         kaleidoscope::state context;
 
@@ -92,6 +113,7 @@ main(int argc, const char *argv[])
 
         std::cout << "result = " << result << std::endl;
     }
+#endif
 
     return 0;
 }
