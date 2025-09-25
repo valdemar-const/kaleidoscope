@@ -66,8 +66,7 @@ main(int argc, const char *argv[])
 
 #if 1
     {
-        std::string input =
-            R"KALEIDOSCOPE(
+        std::string input = R"KALEIDOSCOPE(
                 def foo(a, b, c);
                 1;
                 1 - 2 - 3 ** 5 ** 6 - 4;
