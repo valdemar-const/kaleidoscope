@@ -1,5 +1,7 @@
 # cmake/compiler/BigObject.cmake
 
+include(CheckCXXCompilerFlag)
+
 if(TARGET big_object)
     return()
 endif()
