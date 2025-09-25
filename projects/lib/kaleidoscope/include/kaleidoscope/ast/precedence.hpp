@@ -1,8 +1,9 @@
 #pragma once
 
-#include <kaleidoscope/state.hpp>
+#include <kaleidoscope/module.hpp>
 #include <kaleidoscope/ast/visitor.hpp>
 #include <kaleidoscope/ast/replicator.hpp>
+
 #include <ranges>
 #include <functional>
 #include <list>
@@ -18,8 +19,7 @@ namespace kaleidoscope::ast::utils
 struct precedence : ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast::Node>
 {
     using Super              = ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast::Node>;
-    using Operator_Info      = kaleidoscope::state::operator_properties;
-    using Bin_Op_Precedence  = std::unordered_map<std::string, Operator_Info>;
+    using Bin_Op_Precedence  = Module::precedence;
     using Expression_Element = std::variant<ast::Node *, std::string>;
     using Output             = std::vector<Expression_Element>;
     using Result             = std::list<ast::Precedence_Agnostic_Expr::Expression>;
@@ -56,7 +56,7 @@ struct precedence : ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast:
 namespace kaleidoscope::ast::utils
 {
 
-precedence::precedence(const Bin_Op_Precedence &precedence)
+inline precedence::precedence(const Bin_Op_Precedence &precedence)
     : Super(true)
     , precedence_(precedence)
 {
@@ -97,7 +97,7 @@ precedence::operator()(Ast &ast)
     }
 }
 
-std::unique_ptr<ast::Node>
+inline std::unique_ptr<ast::Node>
 precedence::result(void)
 {
     if (converted_.empty())
@@ -119,6 +119,10 @@ precedence::visit_(const ast::Operation_Unary &ast)
     {
         const_cast<ast::Operation_Unary::Expression &>(ast.operand).reset(visit(*ast.operand).result().release());
     }
+    else
+    {
+        // do nothing
+    }
     visit(*ast.operand);
 }
 
@@ -130,6 +134,10 @@ precedence::visit_(const ast::Function_Defenition &ast)
         if (typeid(*stmt) == typeid(ast::Precedence_Agnostic_Expr))
         {
             const_cast<ast::Function_Defenition::Statement &>(stmt).reset(visit(*stmt).result().release());
+        }
+        else
+        {
+            // do nothing
         }
         visit(*stmt);
     }
@@ -172,7 +180,7 @@ precedence::visit_(const ast::Precedence_Agnostic_Expr &ast)
     {
         if (!precedence_.get().contains(op.first))
         {
-            throw std::invalid_argument("Unknown operator: " + op.first);
+            throw std::runtime_error("Unknown operator precedence: " + op.first);
         }
 
         if (typeid(*op.second) == typeid(ast::Precedence_Agnostic_Expr))
@@ -245,7 +253,7 @@ precedence::pop_to_result(Output &from)
     else if (auto operand = *std::get_if<ast::Node *>(&top))
     {
         from.pop_back();
-        converted_.emplace_back(utils::replicator {}.visit(*operand).result()); // FIXME: may be ast::Precedence_Agnostic_Expr
+        converted_.emplace_back(utils::replicator {}.visit(*operand).result());
     }
     else
     {

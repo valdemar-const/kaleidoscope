@@ -1,5 +1,16 @@
 #pragma once
 
+#include <kaleidoscope/parser.hpp>
+#include <kaleidoscope/parser/support/from_string_view.hpp>
+#include <kaleidoscope/ast/precedence.hpp>
+
+#include <kaleidoscope/module.hpp>
+#include <kaleidoscope/runtime.hpp>
+
+#include <unordered_map>
+#include <span>
+#include <list>
+#include <variant>
 #include <type_traits>
 #include <concepts>
 
@@ -7,26 +18,14 @@
 
 namespace kaleidoscope
 {
+
 struct state
 {
   public:
 
-    struct result
-    {
-        template<typename T>
-        operator T(void)
-        {
-            return T {};
-        }
-
-        operator double(void)
-        {
-            return 42;
-        }
-
-        template<typename T>
-        bool operator==(const T &rhs);
-    };
+    using Cache_Ast           = std::unordered_map<std::string, Ast>;
+    using operator_properties = Module::operator_properties;
+    using result              = runtime::result;
 
     struct symbol
     {
@@ -37,43 +36,72 @@ struct state
         }
     };
 
-    struct operator_properties
+    struct Data_Binder
     {
-        using Precedence = size_t;
-
-        enum class Associativity : uint8_t
+        Data_Binder(state &owner, std::string symbol_name)
+            : owner_(owner)
+            , symbol_name_(symbol_name)
         {
-            Left,
-            Right
-        };
+        }
 
-        enum class Kind : uint8_t
+        Data_Binder(Data_Binder &)             = delete;
+        Data_Binder(Data_Binder &&)            = default;
+        Data_Binder &operator=(Data_Binder &)  = delete;
+        Data_Binder &operator=(Data_Binder &&) = default;
+
+        state &
+        operator=(double value)
         {
-            Unary,
-            Binary
-        };
+            owner_.get().runtime_.scope().bind_func(
+                    symbol_name_,
+                    [value = value](std::vector<std::any> args) -> std::any
+                    {
+                        return value;
+                    }
+            );
+            return owner_.get();
+        }
 
-        Kind          kind          = Kind::Binary;
-        Associativity associativity = Associativity::Left;
-        Precedence    precedence    = 0; /**< lesser is higher */
+        state &
+        operator=(Module::Functional::type value)
+        {
+            owner_.get().runtime_.scope().bind_func(symbol_name_, value);
+            return owner_.get();
+        }
+
+        state &
+        operator=(Module::Operator value)
+        {
+            owner_.get().runtime_.scope().bind_op(symbol_name_, value);
+            return owner_.get();
+        }
+
+      protected:
+
+        std::reference_wrapper<state> owner_;
+        std::string                   symbol_name_;
     };
 
   public:
 
     state(void)
+        : global_()
+        , runtime_(global_)
     {
-        add_operator(
-                "+",
-                operator_properties {
-                        .kind          = operator_properties::Kind::Binary,
-                        .associativity = operator_properties::Associativity::Left,
-                        .precedence    = 40
-                },
-                [](const int &lhs, const int &rhs)
-                {
-                    return lhs + rhs;
-                }
-        );
+    }
+
+  public:
+
+    void
+    import(Module &&module)
+    {
+        global_.link_static(module);
+    }
+
+    void
+    import(const Module &module)
+    {
+        global_.link_shared(module);
     }
 
   public:
@@ -85,27 +113,59 @@ struct state
         return *this;
     }
 
+    Data_Binder
+    operator[](std::string symbol)
+    {
+        return std::move(Data_Binder {*this, symbol});
+    }
+
   public:
 
     state &
     source(std::string_view src)
     {
+        // формирование AST
+        auto ast = preprocess(parser_.parse(src.begin(), src.end()));
+        // применить определения переменных операторов и функций ast к текущему глобальному модулю/области видимости
+        // выделить тело анонимной функции из ast (список выражений) и подготовить его для выполнения из operator()
+        // результат функции -> результат последнего выражения
+        state_body_ = std::move(apply(std::move(ast)));
+
         return *this;
     }
 
     result
     eval(std::string_view src)
     {
-        return {};
+        if (!ast_cache_.contains(src.data()))
+        {
+            auto ast = preprocess(parser_.parse(src.begin(), src.end()));
+            ast_cache_.insert(std::make_pair(src, std::move(ast)));
+        }
+        return runtime_.eval(global_, ast_cache_.at(src.data()));
+    }
+
+    state &
+    push_scope(void)
+    {
+        runtime_.push_scope();
+        return *this;
+    }
+
+    state &
+    pop_scope(void)
+    {
+        runtime_.pop_scope();
+        return *this;
+    }
+
+    Cache_Ast &
+    ast_cache(void)
+    {
+        return ast_cache_;
     }
 
   public:
-
-    symbol
-    operator[](std::string_view symb)
-    {
-        return {};
-    }
 
     result
     operator()(void)
@@ -114,17 +174,51 @@ struct state
     }
 
   protected:
+
+    Ast
+    preprocess(Ast ast)
+    {
+        auto operators_info = runtime_.scope().collect_operators_info();
+        ast::utils::precedence {operators_info}(ast);
+        return std::move(ast);
+    }
+
+    Ast
+    apply(Ast ast)
+    {
+        // пробежаться по
+        return std::move(ast);
+    }
+
+  protected:
+
+    Parser parser_;
+
+  protected:
+
+    Module            global_;
+    runtime           runtime_;
+    Ast               state_body_;
+    mutable Cache_Ast ast_cache_;
 };
 } // namespace kaleidoscope
 
 template<typename T>
-bool
+inline bool
 operator==(const kaleidoscope::state::result &lhs, const T &rhs);
 
 template<>
-bool // clang-format off
+inline bool // clang-format off
 kaleidoscope::state::result::operator==<double>(const double &rhs) // clang-format on
 {
     double a = *this;
+    return a == rhs;
+}
+
+template<>
+inline bool // clang-format off
+kaleidoscope::state::result::operator==<int>(const int &rhs) // clang-format on
+{
+    int a = *this;
     return a == rhs;
 }

@@ -177,6 +177,26 @@ struct Precedence_Agnostic_Expr : public NodeCRTP<Precedence_Agnostic_Expr>
     Operations operations;
 };
 
+// TODO: to implement
+struct If_Expression : public NodeCRTP<If_Expression>
+{
+    using Condition    = std::unique_ptr<Node>;
+    using Expression   = std::unique_ptr<Node>;
+    using Truly_Result = Expression;
+    using Falsy_Result = Expression;
+
+    If_Expression(Condition condition, Truly_Result truly, Falsy_Result falsy)
+        : condition(std::move(condition))
+        , truly(std::move(truly))
+        , falsy(std::move(falsy))
+    {
+    }
+
+    Expression   condition;
+    Truly_Result truly;
+    Falsy_Result falsy;
+};
+
 } // namespace kaleidoscope::ast
 
 namespace kaleidoscope
@@ -188,6 +208,12 @@ struct Ast
 
     ~Ast(void) = default;
     Ast(void)  = default;
+
+    Ast(Ast &)  = delete;
+    Ast(Ast &&) = default;
+
+    Ast &operator=(Ast &)  = delete;
+    Ast &operator=(Ast &&) = default;
 
     Ast(Statements statements)
         : statements(std::move(statements))

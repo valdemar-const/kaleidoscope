@@ -135,12 +135,15 @@ const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable   
 const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_Numeric            >> number          = "number";
 const x3::rule<class R_Identifier_List,        std::vector<     std::string                    >> identifier_list = "identifier-list";
 const x3::rule<class R_Identifier,                              std::string                     > identifier      = "identifier";
+
 // clang-format on
 
-auto mkkw = [](std::string kw)
+template<typename S>
+auto
+mkkw(S &&kw)
 {
-    return x3::lexeme[x3::lit(kw) >> !x3::alnum];
-};
+    return x3::lexeme[x3::lit(std::string(kw)) >> !x3::alnum];
+}
 
 const auto kw_def   = mkkw("def");
 const auto kw_end   = mkkw("end");
@@ -160,8 +163,7 @@ const auto simple_def =
         (number
          | fun_call
          | variable
-         | (x3::lit('(') >> expr >> ')')
-        )[variant_node_upcast];
+         | (x3::lit('(') >> expr >> ')'))[variant_node_upcast];
 
 const auto expr_next_def = (op >> simple)[expr_next_parsed];
 const auto expr_def      = (simple >> *(expr_next))[expr_parsed];

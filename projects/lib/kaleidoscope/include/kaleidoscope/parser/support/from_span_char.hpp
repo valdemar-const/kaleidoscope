@@ -5,9 +5,6 @@
 
 namespace kaleidoscope
 {
-using SpanIterator = std::span<char>::iterator;
-
-template<>
-Parser::Result
-Parser::parse<SpanIterator>(SpanIterator begin, SpanIterator end);
+using ParserSpanCharIterator      = std::span<char>::iterator;
+using ParserSpanCharIteratorConst = std::span<const char>::iterator;
 } // namespace kaleidoscope

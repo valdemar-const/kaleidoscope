@@ -5,9 +5,14 @@
 
 namespace kaleidoscope
 {
-using SpanIterator = std::span<const uint8_t>::iterator;
+using ParserSpanByteIterator      = std::span<uint8_t>::iterator;
+using ParserSpanByteIteratorConst = std::span<const uint8_t>::iterator;
 
 template<>
 Parser::Result
-Parser::parse<SpanIterator>(SpanIterator begin, SpanIterator end);
+Parser::parse<ParserSpanByteIterator>(ParserSpanByteIterator begin, ParserSpanByteIterator end);
+
+template<>
+Parser::Result
+Parser::parse<ParserSpanByteIteratorConst>(ParserSpanByteIteratorConst begin, ParserSpanByteIteratorConst end);
 } // namespace kaleidoscope

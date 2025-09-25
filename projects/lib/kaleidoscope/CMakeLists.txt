@@ -12,7 +12,10 @@ set(details KaleidoscopeDetails)
 add_library(${details} INTERFACE)
 target_sources(${details}
   INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/support/from_span_char.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/support/from_span_char.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/support/from_span_uint8_t.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/support/from_string_view.cpp)
+
 target_link_libraries(${details} INTERFACE ${target})
 
 target_link_libraries(${target} INTERFACE ${details})

@@ -145,7 +145,7 @@ inline replicator::replicator(void)
     );
 }
 
-std::unique_ptr<ast::Node>
+inline std::unique_ptr<ast::Node>
 replicator::result(void)
 {
     return std::move(result_);
