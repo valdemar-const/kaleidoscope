@@ -1,7 +1,7 @@
 include(CPM)
 
 set(package GSL)
-set(version 4.1.0)
+set(version 4.2.0)
 string(TOLOWER ${package} basename)
 file(TO_CMAKE_PATH  "${CPM_PRELOAD}/${basename}-${version}.zip" archive)
 

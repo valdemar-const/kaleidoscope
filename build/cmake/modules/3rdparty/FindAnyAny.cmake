@@ -1,7 +1,7 @@
 include(CPM)
 
 set(package AnyAny)
-set(version 1.0.0)
+set(version 1.1.0)
 string(TOLOWER ${package} basename)
 file(TO_CMAKE_PATH  "${CPM_PRELOAD}/${basename}-${version}.zip" archive)
 

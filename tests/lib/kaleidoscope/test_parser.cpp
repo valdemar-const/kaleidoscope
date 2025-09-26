@@ -1,3 +1,5 @@
+#include "kal.hpp"
+
 #include <kaleidoscope/parser.hpp>
 #include <kaleidoscope/parser/support/from_span_char.hpp>
 #include <kaleidoscope/ast/stringify.hpp>
@@ -87,7 +89,8 @@ struct F
             )
     };
 
-    precedence preprocess;
+    precedence            preprocess;
+    kaleidoscope::context ctx;
 };
 
 BOOST_FIXTURE_TEST_SUITE(s, F)
@@ -117,6 +120,13 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Operation_Binary)));
     BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
+}
+
+BOOST_AUTO_TEST_CASE(data_oriented_design)
+{
+    auto lexeme = ctx.create_const_u8(5);
+
+    boost::nowide::cout << lexeme.get_uuid() << std::endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

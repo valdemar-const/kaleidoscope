@@ -1,7 +1,7 @@
 include(CPM)
 
 set(package EnTT)
-set(version 3.14.0)
+set(version 3.15.0)
 string(TOLOWER ${package} basename)
 file(TO_CMAKE_PATH  "${CPM_PRELOAD}/${basename}-${version}.zip" archive)
 
