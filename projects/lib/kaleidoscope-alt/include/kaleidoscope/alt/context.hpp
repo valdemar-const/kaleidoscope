@@ -17,10 +17,46 @@
 #include <unordered_map>
 #include <typeindex>
 
+#undef interface
+
+// declaration kaleidoscope::alt::Context::Entity
 namespace kaleidoscope::alt
 {
-struct Entity; // forward decl
-} // namespace kaleidoscope::alt
+
+struct Entity
+{
+    Entity(entt::registry &owner, entt::entity id)
+        : id_(id)
+        , owner_(&owner)
+    {
+    }
+
+    Entity(const Entity &)            = default;
+    Entity(Entity &&)                 = default;
+    Entity &operator=(const Entity &) = default;
+    Entity &operator=(Entity &&)      = default;
+
+    operator entt::entity(void) const
+    {
+        return id_;
+    }
+
+  protected:
+
+    entt::entity    id_;
+    entt::registry *owner_;
+};
+
+}; // namespace kaleidoscope::alt
+
+namespace kaleidoscope::alt::category
+{
+
+struct Ast
+{
+};
+
+} // namespace kaleidoscope::alt::category
 
 namespace kaleidoscope::alt::category::ast
 {
@@ -42,6 +78,26 @@ struct NumericLexeme
 };
 
 }; // namespace kaleidoscope::alt::ast
+
+namespace kaleidoscope::alt
+{
+
+struct Ast
+{
+    Ast(Entity root)
+        : root(root)
+    {
+    }
+
+    Ast(const Ast &)            = default;
+    Ast(Ast &&)                 = default;
+    Ast &operator=(const Ast &) = default;
+    Ast &operator=(Ast &&)      = default;
+
+    Entity root;
+};
+
+} // namespace kaleidoscope::alt
 
 namespace kaleidoscope::alt::ecs
 {
@@ -101,6 +157,35 @@ struct Factory<category::ast::NumericLexeme> : public FactoryCRTP<Factory<catego
 
 } // namespace kaleidoscope::alt::ecs
 
+namespace kaleidoscope::alt::ecs
+{
+
+template<>
+struct Factory<category::Ast> : public FactoryCRTP<Factory<category::Ast>>
+{
+    Factory(std::function<boost::uuids::uuid(void)> gen)
+        : gen_(gen)
+    {
+    }
+
+    template<typename... Args>
+    Entity &
+    build(entt::registry &registry, Entity &entity, Args... args)
+    {
+        entt::entity e = entity;
+        registry.emplace_or_replace<boost::uuids::uuid>(e, gen_());
+        registry.emplace_or_replace<alt::Ast>(e, std::forward<Args>(args)...);
+
+        return entity;
+    }
+
+  protected:
+
+    std::function<boost::uuids::uuid(void)> gen_;
+};
+
+} // namespace kaleidoscope::alt::ecs
+
 namespace kaleidoscope::alt::ecs::component
 {
 
@@ -123,6 +208,7 @@ namespace kaleidoscope::alt::interface
 using namespace method;
 
 using IAstNode = aa::any_with<get_uuid>;
+using IAst     = aa::any_with<get_uuid>;
 } // namespace kaleidoscope::alt::interface
 
 // declaration kaleidoscope::alt::Context
@@ -142,42 +228,16 @@ struct Context
     template<typename Category, typename Factory>
     void register_category(Factory &&impl);
 
+    template<typename Interface>
+    std::optional<Interface>
+    as_interface(Entity entity);
+
   protected:
 
     entt::registry reg_;
 };
 
 } // namespace kaleidoscope::alt
-
-// declaration kaleidoscope::alt::Context::Entity
-namespace kaleidoscope::alt
-{
-
-struct Entity
-{
-    Entity(entt::registry &owner, entt::entity id)
-        : id_(id)
-        , owner_(&owner)
-    {
-    }
-
-    Entity(const Entity &)            = default;
-    Entity(Entity &&)                 = default;
-    Entity &operator=(const Entity &) = default;
-    Entity &operator=(Entity &&)      = default;
-
-    operator entt::entity(void) const
-    {
-        return id_;
-    }
-
-  protected:
-
-    entt::entity    id_;
-    entt::registry *owner_;
-};
-
-}; // namespace kaleidoscope::alt
 
 namespace kaleidoscope::alt
 {
@@ -214,6 +274,13 @@ Context::register_category(Factory &&impl)
     {
         storage.emplace(typeid(Category), std::move(impl));
     }
+}
+
+template<typename Interface>
+inline std::optional<Interface>
+Context::as_interface(Entity entity)
+{
+    return std::nullopt;
 }
 
 } // namespace kaleidoscope::alt

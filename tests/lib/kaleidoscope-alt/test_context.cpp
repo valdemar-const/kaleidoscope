@@ -3,6 +3,8 @@
 #define BOOST_TEST_MODULE kaleidoscope_parser
 #include <boost/test/included/unit_test.hpp>
 
+#undef interface
+
 using namespace std::string_literals;
 
 struct F
@@ -35,8 +37,21 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
             ecs::Factory<category::ast::NumericLexeme> {boost::uuids::random_generator_mt19937 {}}
     );
 
-    entity = context.create<category::ast::NumericLexeme>();
-    BOOST_TEST(entity.has_value());
+    auto number = context.create<category::ast::NumericLexeme>();
+    BOOST_TEST(number.has_value());
+
+    context.register_category<category::Ast>(
+            ecs::Factory<category::Ast> {boost::uuids::random_generator_mt19937 {}}
+    );
+
+    auto ast = context.create<category::Ast>(number.value());
+
+    if (auto ast_proxy_opt = context.as_interface<interface::IAst>(ast.value()))
+    {
+        auto &ast = *ast_proxy_opt;
+
+        BOOST_TEST_MESSAGE(ast.get_uuid());
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
