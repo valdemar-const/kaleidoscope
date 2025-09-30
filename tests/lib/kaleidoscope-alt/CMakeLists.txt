@@ -6,6 +6,7 @@ target_sources(test-context PRIVATE test_context.cpp)
 target_link_libraries(test-context
   PRIVATE
     compiler::big_object
+    compiler::definition_fix
   PRIVATE
     kaleidoscope::alt
   PRIVATE
