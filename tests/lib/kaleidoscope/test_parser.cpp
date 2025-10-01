@@ -124,6 +124,19 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
 }
 
+struct ast_to_string
+{
+    std::string
+    operator()(const kaleidoscope::ast::Lexeme_Numeric &node) const
+    {
+        return std::visit([](const auto &value) -> std::string
+                          {
+                              return std::to_string(value);
+                          },
+                          node.value);
+    }
+};
+
 BOOST_AUTO_TEST_CASE(anyany_check)
 {
     std::string input = "5";
@@ -136,18 +149,13 @@ BOOST_AUTO_TEST_CASE(anyany_check)
     BOOST_TEST((any_ast.type_index() == std::type_index {typeid(*result.statements.front())}));
     BOOST_TEST((any_ast.type_descriptor() == aa::descriptor_v<kaleidoscope::ast::Lexeme_Numeric>));
 
-    static const auto numeric_lexeme_to_str = [](const kaleidoscope::ast::Lexeme_Numeric &node)
-    {
-        return std::visit([](const auto &value) -> std::string
-                          {
-                              return std::to_string(value);
-                          },
-                          node.value);
-    };
+    ast_to_string visitor {};
 
-    auto stringify = aa::make_visit_invoke<std::string>(numeric_lexeme_to_str);
+    auto listing =
+            aa::type_switch<std::optional<std::string>>(any_ast)
+                    .case_<const kaleidoscope::ast::Lexeme_Numeric &>(visitor)
+                    .default_(std::nullopt);
 
-    std::optional<std::string> listing = stringify.resolve(any_ast);
     BOOST_TEST(listing.value() == "5.000000");
 }
 

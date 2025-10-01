@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
         auto &ast = *ast_proxy_opt;
 
         std::stringstream msg;
-        msg << "{type: \"Ast\", uuid: \"{" << ast.get_uuid() << "\"}}";
+        msg << "{type: \"Ast\", uuid: \"{" << ast.get_uuid() << "}\"}";
         BOOST_TEST_MESSAGE(msg.str());
     }
 }
