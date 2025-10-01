@@ -4,14 +4,88 @@
 #include <variant>
 #include <vector>
 #include <memory>
-#include <cinttypes>
 
 #include <concepts>
 #include <type_traits>
+#include <typeindex>
+
+#include <anyany/anyany.hpp>
+#include <anyany/type_descriptor.hpp>
+
+#include <cinttypes>
+
+#include <compiler/demangle.hpp>
+#include <cassert>
 
 namespace kaleidoscope::ast
 {
-struct Node; // forward decl
+struct Lexeme_Numeric;
+} // namespace kaleidoscope::ast
+
+namespace aa
+{
+
+struct type_info_rtti
+{
+    template<typename T>
+    static aa::descriptor_t
+    do_invoke(const T &self)
+    {
+        if constexpr (std::is_polymorphic_v<std::decay_t<decltype(self)>>)
+        {
+            static const auto typename_ = compiler::demangle(typeid(self).name()) + "]";
+            return aa::descriptor_t {typename_.data()};
+        }
+        else
+        {
+            return aa::descriptor_v<std::decay_t<decltype(self)>>;
+        }
+    }
+
+    template<typename CRTP>
+    struct plugin
+    {
+        aa::descriptor_t
+        type_descriptor() const
+        {
+            return aa::invoke<::aa::type_info_rtti>(static_cast<const CRTP &>(*this));
+        }
+    };
+};
+
+} // namespace aa
+
+namespace kaleidoscope::ast
+{
+
+namespace plugin
+{
+    struct type_index
+    {
+        template<typename T>
+        static std::type_index
+        do_invoke(const T &self)
+        {
+            return std::type_index(typeid(self));
+        }
+
+        template<typename CRTP>
+        struct plugin
+        {
+            std::type_index
+            type_index() const
+            {
+                return aa::invoke<::kaleidoscope::ast::plugin::type_index>(static_cast<const CRTP &>(*this));
+            }
+        };
+    };
+} // namespace plugin
+
+using INode    = aa::any_with<aa::type_info_rtti, aa::move, plugin::type_index>;
+using INodeRef = aa::poly_ref<aa::type_info_rtti, plugin::type_index>;
+
+struct Node;
+
 } // namespace kaleidoscope::ast
 
 namespace kaleidoscope::traits

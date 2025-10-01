@@ -5,6 +5,11 @@
 #include <kaleidoscope/ast/iterator.hpp>
 #include <kaleidoscope/state.hpp>
 
+#include <anyany/anyany.hpp>
+#include <anyany/utility.hpp>
+#include <anyany/visit_invoke.hpp>
+#include <anyany/type_descriptor.hpp>
+
 #include <boost/nowide/iostream.hpp>
 
 #define BOOST_TEST_MODULE kaleidoscope_parser
@@ -117,6 +122,33 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Operation_Binary)));
     BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
+}
+
+BOOST_AUTO_TEST_CASE(anyany_check)
+{
+    std::string input = "5";
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    preprocess(result);
+
+    kaleidoscope::ast::INodeRef any_ast = *result.statements.front();
+
+    BOOST_TEST((any_ast.type_index() == std::type_index {typeid(*result.statements.front())}));
+    BOOST_TEST((any_ast.type_descriptor() == aa::descriptor_v<kaleidoscope::ast::Lexeme_Numeric>));
+
+    static const auto numeric_lexeme_to_str = [](const kaleidoscope::ast::Lexeme_Numeric &node)
+    {
+        return std::visit([](const auto &value) -> std::string
+                          {
+                              return std::to_string(value);
+                          },
+                          node.value);
+    };
+
+    auto stringify = aa::make_visit_invoke<std::string>(numeric_lexeme_to_str);
+
+    std::optional<std::string> listing = stringify.resolve(any_ast);
+    BOOST_TEST(listing.value() == "5.000000");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
