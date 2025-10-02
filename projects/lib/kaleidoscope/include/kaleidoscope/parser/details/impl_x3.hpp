@@ -14,12 +14,7 @@ using boost::fusion::at_c;
 
 const auto emplace_to_vec = [](auto &ctx)
 {
-    _val(ctx).emplace_back(_attr(ctx).release());
-};
-
-const auto node_upcast = [](auto &ctx)
-{
-    _val(ctx).reset(_attr(ctx).release());
+    _val(ctx).emplace_back(std::move(_attr(ctx)));
 };
 
 const auto variant_node_upcast = [](auto &ctx)
@@ -27,7 +22,7 @@ const auto variant_node_upcast = [](auto &ctx)
     boost::apply_visitor(
             [&](auto &&v)
             {
-                _val(ctx).reset(v.release());
+                _val(ctx) = std::move(v);
             },
             _attr(ctx)
     );
@@ -35,38 +30,41 @@ const auto variant_node_upcast = [](auto &ctx)
 
 const auto number_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Lexeme_Numeric(_attr(ctx)));
+    _val(ctx) = ast::Lexeme_Numeric(_attr(ctx));
 };
 
 const auto variable_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Variable(_attr(ctx)));
+    _val(ctx) = ast::Variable(_attr(ctx));
 };
 
 const auto fun_decl_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Function_Declaration(at_c<0>(_attr(ctx)), at_c<1>(_attr(ctx))));
+    _val(ctx) = ast::Function_Declaration(at_c<0>(_attr(ctx)), at_c<1>(_attr(ctx)));
 };
 
 const auto fun_def_parsed = [](auto &ctx)
 {
     auto &func_stmts = at_c<1>(_attr(ctx));
-    auto  converted  = std::accumulate(
+
+    ast::Function_Defenition::Body statements;
+    statements.reserve(func_stmts.size());
+
+    std::transform(
             func_stmts.begin(),
             func_stmts.end(),
-            ast::Function_Defenition::Body {},
-            [](auto acc, auto &&elem)
+            std::back_inserter(statements),
+            [](auto &&elem)
             {
-                acc.emplace_back(elem.release());
-                return std::move(acc);
+                return ast::Function_Defenition::Statement {std::move(elem)};
             }
     );
-    _val(ctx).reset(new ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(converted)));
+    _val(ctx) = ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(statements));
 };
 
 const auto fun_call_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Functional_Call(at_c<0>(_attr(ctx)), std::move(at_c<1>(_attr(ctx)))));
+    _val(ctx) = ast::Functional_Call(at_c<0>(_attr(ctx)), std::move(at_c<1>(_attr(ctx))));
 };
 
 const auto expr_next_parsed = [](auto &ctx)
@@ -80,7 +78,7 @@ const auto expr_next_parsed = [](auto &ctx)
     }
     else if (ops.size() == 2)
     {
-        _val(ctx) = std::move(std::make_pair(ops.front(), std::make_unique<ast::Operation_Unary>(ops.back(), std::move(operand))));
+        _val(ctx) = std::move(std::make_pair(ops.front(), ast::INode {ast::Operation_Unary(ops.back(), std::move(operand))}));
     }
     else
     {
@@ -98,10 +96,10 @@ const auto expr_parsed = [](auto &ctx)
     auto &first      = at_c<0>(_attr(ctx));
     auto &operations = at_c<1>(_attr(ctx));
 
-    _val(ctx).reset(new ast::Precedence_Agnostic_Expr(
+    _val(ctx) = ast::Precedence_Agnostic_Expr(
             std::move(first),
             std::move(operations)
-    ));
+    );
 };
 
 const auto chunk_parsed = [](auto &ctx)
@@ -117,22 +115,22 @@ namespace x3 = boost::spirit::x3;
 using namespace actions;
 
 // clang-format off
-const x3::rule<class R_Chunk,     std::vector< std::unique_ptr< ast::Node                     >>> chunk           = "chunk";
-const x3::rule<class R_Stmt_List, std::vector< std::unique_ptr< ast::Node                     >>> stmt_list       = "statement-list";
-const x3::rule<class R_Stmt,                   std::unique_ptr< ast::Node                      >> stmt            = "statement";
-const x3::rule<class R_Fun_Decl,               std::unique_ptr< ast::Function_Declaration      >> fun_decl        = "function-declaration";
-const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node                     >>> fun_block       = "function-block";
-const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition       >> fun_def         = "function-defenition";
-const x3::rule<class R_Fun_Def,   std::vector< std::unique_ptr< ast::Node                     >>> expr_list       = "expression-list";
-const x3::rule<class R_Expr,                   std::unique_ptr< ast::Precedence_Agnostic_Expr  >> expr            = "expression-raw";
+const x3::rule<class R_Chunk,     std::vector< ast::INode                                      >> chunk           = "chunk";
+const x3::rule<class R_Stmt_List, std::vector< ast::INode                                      >> stmt_list       = "statement-list";
+const x3::rule<class R_Stmt,                   ast::INode                                       > stmt            = "statement";
+const x3::rule<class R_Fun_Decl,               ast::Function_Declaration                        > fun_decl        = "function-declaration";
+const x3::rule<class R_Fun_Block, std::vector< ast::INode                                      >> fun_block       = "function-block";
+const x3::rule<class R_Fun_Def,                ast::Function_Defenition                         > fun_def         = "function-defenition";
+const x3::rule<class R_Fun_Def,   std::vector< ast::INode                                      >> expr_list       = "expression-list";
+const x3::rule<class R_Expr,                   ast::Precedence_Agnostic_Expr                    > expr            = "expression-raw";
 const x3::rule<class R_Expr_Next,   std::pair<
                                                ast::Precedence_Agnostic_Expr::Op,
-                                               std::unique_ptr< ast::Node >
+                                               ast::INode
                                              >                                                  > expr_next       = "expression-continue";
-const x3::rule<class R_Simple,                 std::unique_ptr< ast::Node                      >> simple          = "simple";
-const x3::rule<class R_Fun_Call,               std::unique_ptr< ast::Functional_Call           >> fun_call        = "functional-call";
-const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable                  >> variable        = "variable";
-const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_Numeric            >> number          = "number";
+const x3::rule<class R_Simple,                 ast::INode                                       > simple          = "simple";
+const x3::rule<class R_Fun_Call,               ast::Functional_Call                             > fun_call        = "functional-call";
+const x3::rule<class R_Var,                    ast::Variable                                    > variable        = "variable";
+const x3::rule<class R_Number,                 ast::Lexeme_Numeric                              > number          = "number";
 const x3::rule<class R_Identifier_List,        std::vector<     std::string                    >> identifier_list = "identifier-list";
 const x3::rule<class R_Identifier,                              std::string                     > identifier      = "identifier";
 

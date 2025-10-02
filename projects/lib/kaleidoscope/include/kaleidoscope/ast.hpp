@@ -76,22 +76,11 @@ using any_with_t = aa::any_with<type_info_rtti, type_index, Args...>;
 template<typename... Args>
 using poly_ref_t = aa::poly_ref<type_info_rtti, type_index, Args...>;
 
+/** poly_ptr included all type information for both RTTI type_index and anyany descriptor_t */
+template<typename... Args>
+using poly_ptr_t = aa::poly_ptr<type_info_rtti, type_index, Args...>;
+
 } // namespace aa
-
-namespace kaleidoscope::ast
-{
-struct Node;
-} // namespace kaleidoscope::ast
-
-namespace kaleidoscope::traits
-{
-
-template<typename T>
-concept Ast_Node = requires {
-    requires std::is_base_of_v<ast::Node, T>;
-};
-
-} // namespace kaleidoscope::traits
 
 namespace kaleidoscope::ast
 {
@@ -101,41 +90,34 @@ using INodeRef = aa::poly_ref_t<>;
 
 namespace kaleidoscope::ast
 {
-struct Node
-{
-    virtual ~Node(void) = default;
-};
 
-template<typename T>
-struct NodeCRTP : public Node
-{
-    ~NodeCRTP(void) override = default;
-};
-
-struct Lexeme_Numeric : public NodeCRTP<Lexeme_Numeric>
+struct Lexeme_Numeric
 {
     using f64   = double;
     using Value = std::variant<f64>;
-
-    ~Lexeme_Numeric(void) override = default;
 
     Lexeme_Numeric(Value value)
         : value(value)
     {
     }
 
+    Lexeme_Numeric(Lexeme_Numeric &&)            = default;
+    Lexeme_Numeric &operator=(Lexeme_Numeric &&) = default;
+
     Value value;
 };
 
-struct Variable : public NodeCRTP<Variable>
+struct Variable
 {
-    using Name               = std::string;
-    ~Variable(void) override = default;
+    using Name = std::string;
 
     Variable(Name name)
         : name(name)
     {
     }
+
+    Variable(Variable &&)            = default;
+    Variable &operator=(Variable &&) = default;
 
     operator std::string(void)
     {
@@ -145,13 +127,11 @@ struct Variable : public NodeCRTP<Variable>
     Name name;
 };
 
-struct Function_Declaration : public NodeCRTP<Function_Declaration>
+struct Function_Declaration
 {
     using Name = std::string;
     using Arg  = std::string;
     using Args = std::vector<Arg>;
-
-    ~Function_Declaration(void) override = default;
 
     Function_Declaration(Name name, Args args)
         : name(name)
@@ -159,17 +139,18 @@ struct Function_Declaration : public NodeCRTP<Function_Declaration>
     {
     }
 
+    Function_Declaration(Function_Declaration &&)            = default;
+    Function_Declaration &operator=(Function_Declaration &&) = default;
+
     Name name;
     Args args;
 };
 
-struct Function_Defenition : public NodeCRTP<Function_Defenition>
+struct Function_Defenition
 {
     using Prototype = std::unique_ptr<Function_Declaration>;
-    using Statement = std::unique_ptr<Node>;
+    using Statement = ast::INode;
     using Body      = std::vector<Statement>;
-
-    ~Function_Defenition(void) override = default;
 
     Function_Defenition(Prototype prototype, Body body)
         : prototype(std::move(prototype))
@@ -177,16 +158,17 @@ struct Function_Defenition : public NodeCRTP<Function_Defenition>
     {
     }
 
+    Function_Defenition(Function_Defenition &&)            = default;
+    Function_Defenition &operator=(Function_Defenition &&) = default;
+
     Prototype prototype;
     Body      body;
 };
 
-struct Functional_Call : public NodeCRTP<Functional_Call>
+struct Functional_Call
 {
     using Callee = std::string;
-    using Args   = std::vector<std::unique_ptr<Node>>;
-
-    ~Functional_Call(void) override = default;
+    using Args   = std::vector<ast::INode>;
 
     Functional_Call(Callee callee, Args args)
         : callee(callee)
@@ -194,16 +176,17 @@ struct Functional_Call : public NodeCRTP<Functional_Call>
     {
     }
 
+    Functional_Call(Functional_Call &&)            = default;
+    Functional_Call &operator=(Functional_Call &&) = default;
+
     Callee callee;
     Args   args;
 };
 
-struct Operation_Unary : public NodeCRTP<Operation_Unary>
+struct Operation_Unary
 {
     using Operator   = std::string;
-    using Expression = std::unique_ptr<Node>;
-
-    ~Operation_Unary(void) override = default;
+    using Expression = ast::INode;
 
     Operation_Unary(Operator op, Expression operand)
         : op(op)
@@ -211,16 +194,17 @@ struct Operation_Unary : public NodeCRTP<Operation_Unary>
     {
     }
 
+    Operation_Unary(Operation_Unary &&)            = default;
+    Operation_Unary &operator=(Operation_Unary &&) = default;
+
     Operator   op;
     Expression operand;
 };
 
-struct Operation_Binary : public NodeCRTP<Operation_Binary>
+struct Operation_Binary
 {
     using Operator   = std::string;
-    using Expression = std::unique_ptr<Node>;
-
-    ~Operation_Binary(void) override = default;
+    using Expression = ast::INode;
 
     Operation_Binary(Operator op, Expression lhs, Expression rhs)
         : op(op)
@@ -229,18 +213,19 @@ struct Operation_Binary : public NodeCRTP<Operation_Binary>
     {
     }
 
+    Operation_Binary(Operation_Binary &&)            = default;
+    Operation_Binary &operator=(Operation_Binary &&) = default;
+
     Operator   op;
     Expression lhs;
     Expression rhs;
 };
 
-struct Precedence_Agnostic_Expr : public NodeCRTP<Precedence_Agnostic_Expr>
+struct Precedence_Agnostic_Expr
 {
-    using Expression = std::unique_ptr<Node>;
+    using Expression = ast::INode;
     using Op         = std::string;
     using Operations = std::vector<std::pair<Op, Expression>>;
-
-    ~Precedence_Agnostic_Expr(void) override = default;
 
     Precedence_Agnostic_Expr(Expression first, Operations operations)
         : first(std::move(first))
@@ -248,15 +233,18 @@ struct Precedence_Agnostic_Expr : public NodeCRTP<Precedence_Agnostic_Expr>
     {
     }
 
+    Precedence_Agnostic_Expr(Precedence_Agnostic_Expr &&)            = default;
+    Precedence_Agnostic_Expr &operator=(Precedence_Agnostic_Expr &&) = default;
+
     Expression first;
     Operations operations;
 };
 
 // TODO: to implement
-struct If_Expression : public NodeCRTP<If_Expression>
+struct If_Expression
 {
-    using Condition    = std::unique_ptr<Node>;
-    using Expression   = std::unique_ptr<Node>;
+    using Condition    = ast::INode;
+    using Expression   = ast::INode;
     using Truly_Result = Expression;
     using Falsy_Result = Expression;
 
@@ -266,6 +254,9 @@ struct If_Expression : public NodeCRTP<If_Expression>
         , falsy(std::move(falsy))
     {
     }
+
+    If_Expression(If_Expression &&)            = default;
+    If_Expression &operator=(If_Expression &&) = default;
 
     Expression   condition;
     Truly_Result truly;
@@ -279,7 +270,7 @@ namespace kaleidoscope
 
 struct Ast
 {
-    using Statements = std::vector<std::unique_ptr<ast::Node>>;
+    using Statements = std::vector<ast::INode>;
 
     ~Ast(void) = default;
     Ast(void)  = default;
