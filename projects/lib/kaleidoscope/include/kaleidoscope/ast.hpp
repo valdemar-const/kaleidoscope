@@ -17,11 +17,6 @@
 #include <compiler/demangle.hpp>
 #include <cassert>
 
-namespace kaleidoscope::ast
-{
-struct Lexeme_Numeric;
-} // namespace kaleidoscope::ast
-
 namespace aa
 {
 
@@ -53,39 +48,39 @@ struct type_info_rtti
     };
 };
 
+struct type_index
+{
+    template<typename T>
+    static std::type_index
+    do_invoke(const T &self)
+    {
+        return std::type_index(typeid(self));
+    }
+
+    template<typename CRTP>
+    struct plugin
+    {
+        std::type_index
+        type_index() const
+        {
+            return aa::invoke<::aa::type_index>(static_cast<const CRTP &>(*this));
+        }
+    };
+};
+
+/** any_with included all type information for both RTTI type_index and anyany descriptor_t */
+template<typename... Args>
+using any_with_t = aa::any_with<type_info_rtti, type_index, Args...>;
+
+/** poly_ref included all type information for both RTTI type_index and anyany descriptor_t */
+template<typename... Args>
+using poly_ref_t = aa::poly_ref<type_info_rtti, type_index, Args...>;
+
 } // namespace aa
 
 namespace kaleidoscope::ast
 {
-
-namespace plugin
-{
-    struct type_index
-    {
-        template<typename T>
-        static std::type_index
-        do_invoke(const T &self)
-        {
-            return std::type_index(typeid(self));
-        }
-
-        template<typename CRTP>
-        struct plugin
-        {
-            std::type_index
-            type_index() const
-            {
-                return aa::invoke<::kaleidoscope::ast::plugin::type_index>(static_cast<const CRTP &>(*this));
-            }
-        };
-    };
-} // namespace plugin
-
-using INode    = aa::any_with<aa::type_info_rtti, aa::move, plugin::type_index>;
-using INodeRef = aa::poly_ref<aa::type_info_rtti, plugin::type_index>;
-
 struct Node;
-
 } // namespace kaleidoscope::ast
 
 namespace kaleidoscope::traits
@@ -97,6 +92,12 @@ concept Ast_Node = requires {
 };
 
 } // namespace kaleidoscope::traits
+
+namespace kaleidoscope::ast
+{
+using INode    = aa::any_with_t<aa::move>;
+using INodeRef = aa::poly_ref_t<>;
+} // namespace kaleidoscope::ast
 
 namespace kaleidoscope::ast
 {

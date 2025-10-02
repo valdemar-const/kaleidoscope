@@ -10,6 +10,9 @@
 #include <anyany/visit_invoke.hpp>
 #include <anyany/type_descriptor.hpp>
 
+#include <functional>
+#include <unordered_set>
+
 #include <boost/nowide/iostream.hpp>
 
 #define BOOST_TEST_MODULE kaleidoscope_parser
@@ -126,12 +129,104 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
 
 struct ast_to_string
 {
-    std::string
+    using Result = std::string;
+
+    Result
     operator()(const kaleidoscope::ast::Lexeme_Numeric &node) const
     {
         return std::visit([](const auto &value) -> std::string
                           {
                               return std::to_string(value);
+                          },
+                          node.value);
+    }
+};
+
+template<typename Derived, typename Value>
+struct Type_Switch_CRTP
+{
+    using value_t  = Value;
+    using result_t = std::optional<value_t>;
+    using Any      = aa::poly_ref_t<>;
+    using Visit    = std::function<result_t(Any)>;
+
+  protected:
+
+    Type_Switch_CRTP(void)
+        : visit_chain_(return_default_)
+    {
+    }
+
+  public:
+
+    template<typename T, typename F>
+    Type_Switch_CRTP &
+    register_handler(F &&handler)
+    {
+        if (registered_handlers_.contains(aa::descriptor_v<T>))
+        {
+            return *this;
+        }
+        else
+        {
+            registered_handlers_.insert(aa::descriptor_v<T>);
+        }
+
+        auto binded_forward = [this, handler = std::forward<F>(handler)](Any any)
+        {
+            return aa::type_switch<result_t>(any)
+                    .template case_<std::decay_t<T>>(handler)
+                    .default_(visit_chain_(any));
+        };
+
+        visit_chain_ = binded_forward;
+        return *this;
+    }
+
+  protected:
+
+    result_t
+    operator()(Any concrete)
+    {
+        return visit_chain_(static_cast<Any>(concrete));
+    }
+
+  protected:
+
+    Visit                                visit_chain_;
+    std::unordered_set<aa::descriptor_t> registered_handlers_;
+
+  private:
+
+    static result_t
+    return_default_(Any)
+    {
+        return std::nullopt;
+    }
+};
+
+struct Ast_To_String : public Type_Switch_CRTP<Ast_To_String, std::string>
+{
+    using Super = Type_Switch_CRTP<Ast_To_String, std::string>;
+
+    Ast_To_String(void)
+        : Super()
+    {
+    }
+
+    template<typename T>
+    result_t
+    operator()(T &&v)
+    {
+        return Super::operator()(static_cast<Any>(v));
+    }
+
+    result_t
+    operator()(const kaleidoscope::ast::Lexeme_Numeric &node)
+    {
+        return std::visit([](const auto &value) -> std::string
+                          {
+                              return std::to_string(value) + "(static dispatch)";
                           },
                           node.value);
     }
@@ -154,9 +249,24 @@ BOOST_AUTO_TEST_CASE(anyany_check)
     auto listing =
             aa::type_switch<std::optional<std::string>>(any_ast)
                     .case_<const kaleidoscope::ast::Lexeme_Numeric &>(visitor)
-                    .default_(std::nullopt);
+                    .default_(std::nullopt); // good
+
+    auto stringify_visitor = aa::make_visit_invoke<std::string>(
+            [](ast_to_string &visitor, const kaleidoscope::ast::Lexeme_Numeric &node)
+            {
+                return visitor(node);
+            }
+    );
+
+    auto stringify = [&stringify_visitor, &visitor](auto &&node) -> std::optional<std::string>
+    {
+        return stringify_visitor.resolve(visitor, std::forward<decltype(node)>(node));
+    };
+
+    auto listing2 = stringify(any_ast);
 
     BOOST_TEST(listing.value() == "5.000000");
+    BOOST_TEST(listing2.value() == listing.value());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
