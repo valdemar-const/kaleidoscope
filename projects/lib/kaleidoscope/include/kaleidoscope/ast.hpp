@@ -28,7 +28,21 @@ struct type_info_rtti
     {
         if constexpr (std::is_polymorphic_v<std::decay_t<decltype(self)>>)
         {
-            static const auto typename_ = compiler::demangle(typeid(self).name()) + "]";
+            static const auto typename_ = [](const std::type_info &type) -> std::string
+            {
+                auto result = compiler::demangle(type.name())
+#if defined(__GNUG__) // TODO: undefined mangling behaviour through implementations
+                            + "]"
+#else
+                            + ">(void)"
+#endif
+                        ;
+                if (result.starts_with("struct"))
+                {
+                    result = std::string {result.begin() + sizeof("struct"), result.end()};
+                }
+                return result;
+            }(typeid(self));
             return aa::descriptor_t {typename_.data()};
         }
         else

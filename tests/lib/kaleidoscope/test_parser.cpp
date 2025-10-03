@@ -244,6 +244,8 @@ BOOST_AUTO_TEST_CASE(anyany_check)
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
     preprocess(result);
 
+    BOOST_TEST(result.statements.size() == 1);
+
     kaleidoscope::ast::INodeRef any_ast = *result.statements.front();
 
     BOOST_TEST((any_ast.type_index() == std::type_index {typeid(*result.statements.front())}));
