@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS uuid nowide unit_test_framework REQUIRED)
+find_package(Boost COMPONENTS uuid nowide unit_test_framework callable_traits REQUIRED)
 find_package(Compiler REQUIRED)
 find_package(AnyAny   REQUIRED)
 find_package(EnTT     REQUIRED)
@@ -17,6 +17,7 @@ target_link_libraries(test-parser
   PRIVATE
     Boost::nowide
     Boost::uuid
-    Boost::unit_test_framework)
+    Boost::unit_test_framework
+    Boost::callable_traits)
 
 add_test(NAME test-parser COMMAND test-parser)

@@ -191,7 +191,7 @@ BOOST_SPIRIT_DEFINE(
         identifier
 );
 
-const auto comment = x3::lit('#') >> *(!x3::eol) >> x3::eol;
+const auto comment = x3::lexeme["#" >> *(x3::char_ - x3::eol)] >> (x3::eol | x3::eoi);
 const auto skipper = x3::ascii::space | comment;
 
 } // namespace kaleidoscope::parser::grammar

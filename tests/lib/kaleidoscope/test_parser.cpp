@@ -15,6 +15,9 @@
 
 #include <boost/nowide/iostream.hpp>
 
+#include <boost/type_traits/function_traits.hpp>
+#include <boost/callable_traits.hpp>
+
 #define BOOST_TEST_MODULE kaleidoscope_parser
 #include <boost/test/included/unit_test.hpp>
 
@@ -103,13 +106,14 @@ BOOST_FIXTURE_TEST_SUITE(s, F)
 BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
 {
     std::string input = R"KALEIDOSCOPE(
-                    def foo(a, b, c);
-                    1;
-                    1 - 2 - 3 ** 5 ** 6 - 4;
-                    5 + 5 * 2 - 1;
-                    g + -(7 + b) * -1;
-                    a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f;
-                    1;
+                    # this is a single line commentary
+                    def foo(a, b, c);                                      # function declaration
+                    1;                                                     # numeric lexeme
+                    1 - 2 - 3 ** 5 ** 6 - 4;                               # mathematical expression 1
+                    5 + 5 * 2 - 1;                                         # mathematical expression 1
+                    g + -(7 + b) * -1;                                     # mathematical expression 1
+                    a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f; # mathematical expression 1
+                    # function definition
                     def foo(a, b, c)
                         (a - b) * c;
                         a - b * c
@@ -119,12 +123,13 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
     preprocess(result);
 
+    BOOST_TEST(result.statements.size() == 7);
     BOOST_TEST_MESSAGE(make_listing(result));
 
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Operation_Binary)));
-    BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
+    BOOST_TEST((typeid(*result.statements.at(6)) == typeid(kaleidoscope::ast::Function_Defenition)));
 }
 
 struct ast_to_string
@@ -267,6 +272,40 @@ BOOST_AUTO_TEST_CASE(anyany_check)
 
     BOOST_TEST(listing.value() == "5.000000");
     BOOST_TEST(listing2.value() == listing.value());
+}
+
+int example(int, double);
+
+BOOST_AUTO_TEST_CASE(functional_traits)
+{
+    using Example_Func   = boost::function_traits<decltype(example)>;
+    constexpr auto arity = Example_Func::arity;
+
+    using Args = boost::callable_traits::args_t<decltype(example)>; // std::tuple<int, double>
+
+    std::string result_typename = compiler::demangle(typeid(Example_Func::result_type).name());
+
+    static constexpr auto get_args_signatures = []<typename Tuple>(void) -> const std::vector<std::type_index> &
+    {
+        // for type in Tuple do args_type_signatures.emplace_back(typeid(type)); done
+        static const auto result = []<size_t... I>(std::index_sequence<I...>) -> std::vector<std::type_index>
+        {
+            std::vector<std::type_index> args_type_signatures;
+            (args_type_signatures.emplace_back(typeid(std::tuple_element_t<I, Tuple>)), ...);
+            return args_type_signatures;
+        }(std::make_index_sequence<std::tuple_size_v<Tuple>> {});
+        return result;
+    };
+
+    auto args_type_signatures = get_args_signatures.operator()<Args>();
+
+    auto all_typenames = std::accumulate(args_type_signatures.begin(), args_type_signatures.end(), std::string {}, [](auto acc, auto elem)
+                                         {
+                                             return (acc.empty()) ? ("\"" + compiler::demangle(elem.name()) + "\"")
+                                                                  : (acc + ", \"" + compiler::demangle(elem.name()) + "\"");
+                                         });
+
+    BOOST_TEST_MESSAGE(("{\"type\": \"functional\", \"return\": \"" + result_typename + "\", \"args\": [" + all_typenames + "]}"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
