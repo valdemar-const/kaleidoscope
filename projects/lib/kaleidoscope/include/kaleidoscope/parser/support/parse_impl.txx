@@ -13,8 +13,8 @@ Parser::parse(T begin, T end)
     using namespace boost::spirit::x3;
     Parser::Result result;
 
-    std::vector<std::unique_ptr<ast::Node>> out;
-    bool                                    is_full_parsed =
+    std::vector<ast::INode> out;
+    bool                    is_full_parsed =
             phrase_parse(
                     begin,
                     end,

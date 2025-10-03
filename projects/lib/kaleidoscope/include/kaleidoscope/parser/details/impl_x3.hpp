@@ -54,12 +54,15 @@ const auto fun_def_parsed = [](auto &ctx)
             func_stmts.begin(),
             func_stmts.end(),
             std::back_inserter(statements),
-            [](auto &&elem)
+            [](auto &elem)
             {
                 return ast::Function_Defenition::Statement {std::move(elem)};
             }
     );
-    _val(ctx) = ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(statements));
+    _val(ctx) = ast::Function_Defenition {
+            std::make_unique<ast::Function_Declaration>(at_c<0>(_attr(ctx))),
+            std::move(statements)
+    };
 };
 
 const auto fun_call_parsed = [](auto &ctx)
@@ -74,11 +77,11 @@ const auto expr_next_parsed = [](auto &ctx)
     auto &operand = at_c<1>(_attr(ctx));
     if (ops.size() == 1)
     {
-        _val(ctx) = std::move(std::make_pair(ops.front(), std::move(operand)));
+        _val(ctx) = std::make_pair(ops.front(), std::move(operand));
     }
     else if (ops.size() == 2)
     {
-        _val(ctx) = std::move(std::make_pair(ops.front(), ast::INode {ast::Operation_Unary(ops.back(), std::move(operand))}));
+        _val(ctx) = std::make_pair(ops.front(), ast::INode {ast::Operation_Unary(ops.back(), std::move(operand))});
     }
     else
     {
@@ -104,7 +107,7 @@ const auto expr_parsed = [](auto &ctx)
 
 const auto chunk_parsed = [](auto &ctx)
 {
-    _val(ctx) = std::move(Ast(std::move(_attr(ctx))));
+    _val(ctx) = Ast(std::move(_attr(ctx)));
 };
 
 }; // namespace kaleidoscope::parser::actions
