@@ -58,7 +58,7 @@ const auto fun_def_parsed = [](auto &ctx)
             [](auto acc, auto &&elem)
             {
                 acc.emplace_back(elem.release());
-                return std::move(acc);
+                return acc;
             }
     );
     _val(ctx).reset(new ast::Function_Defenition(std::move(at_c<0>(_attr(ctx))), std::move(converted)));

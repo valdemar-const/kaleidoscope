@@ -37,7 +37,7 @@ each<ast::Function_Defenition>(std::unique_ptr<ast::Function_Defenition> &node)
             [](auto acc, auto &&el)
             {
                 acc.emplace_back(std::ref(el));
-                return std::move(acc);
+                return acc;
             }
     );
 
@@ -59,7 +59,7 @@ each<ast::Functional_Call>(std::unique_ptr<ast::Functional_Call> &node)
             [](auto acc, auto &&el)
             {
                 acc.emplace_back(std::ref(el));
-                return std::move(acc);
+                return acc;
             }
     );
 }
@@ -92,7 +92,7 @@ each<ast::Precedence_Agnostic_Expr>(std::unique_ptr<ast::Precedence_Agnostic_Exp
             [](auto acc, auto &&el)
             {
                 acc.emplace_back(std::ref(el.second));
-                return std::move(acc);
+                return acc;
             }
     );
     result.insert(result.end(), std::make_move_iterator(args.begin()), std::make_move_iterator(args.end()));
@@ -108,15 +108,15 @@ namespace kaleidoscope::ast::utils
 struct Iterator_Recursive
 {
     using iterator_concept = std::forward_iterator_tag;
-    using element_type     = std::reference_wrapper<std::unique_ptr<ast::Node>>;
-    using pointer_type     = ast::Node *;
-    using reference_type   = std::unique_ptr<ast::Node> &;
+    using element_type     = ast::INodeRef;
+    using pointer_type     = ast::INodePtr;
+    using reference_type   = ast::INodeRef;
     using Parents          = std::list<element_type>;
 
     struct Next;
 
-    Iterator_Recursive(std::unique_ptr<ast::Node> &root, Parents parents = {})
-        : current_(std::ref(root))
+    Iterator_Recursive(ast::Node &root, Parents parents = {})
+        : current_(root)
         , parents_(std::move(parents))
         , next(std::make_unique<Next>())
     {

@@ -76,6 +76,10 @@ using any_with_t = aa::any_with<type_info_rtti, type_index, Args...>;
 template<typename... Args>
 using poly_ref_t = aa::poly_ref<type_info_rtti, type_index, Args...>;
 
+/** poly_ptr included all type information for both RTTI type_index and anyany descriptor_t */
+template<typename... Args>
+using poly_ptr_t = aa::poly_ptr<type_info_rtti, type_index, Args...>;
+
 } // namespace aa
 
 namespace kaleidoscope::ast
@@ -97,6 +101,7 @@ namespace kaleidoscope::ast
 {
 using INode    = aa::any_with_t<aa::move>;
 using INodeRef = aa::poly_ref_t<>;
+using INodePtr = aa::poly_ptr_t<>;
 } // namespace kaleidoscope::ast
 
 namespace kaleidoscope::ast

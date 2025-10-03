@@ -77,7 +77,7 @@ inline replicator::replicator(void)
                                         [&](auto acc, auto &&elem)
                                         {
                                             acc.emplace_back(visit(*elem).result());
-                                            return std::move(acc);
+                                            return acc;
                                         }
                                 )
                         )
@@ -97,7 +97,7 @@ inline replicator::replicator(void)
                                 [&](auto acc, auto &&el)
                                 {
                                     acc.emplace_back(visit(*el).result());
-                                    return std::move(acc);
+                                    return acc;
                                 }
                         )
                 ));
@@ -137,7 +137,7 @@ inline replicator::replicator(void)
                                 [&](auto acc, auto &&el)
                                 {
                                     acc.emplace_back(el.first, visit(*el.second).result());
-                                    return std::move(acc);
+                                    return acc;
                                 }
                         )
                 ));

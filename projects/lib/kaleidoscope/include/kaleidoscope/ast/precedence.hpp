@@ -108,7 +108,7 @@ precedence::result(void)
     {
         std::unique_ptr<ast::Node> tmp {converted_.back().release()};
         converted_.pop_back();
-        return std::move(tmp);
+        return tmp;
     }
 }
 

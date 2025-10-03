@@ -50,7 +50,7 @@ to_string<Function_Declaration>(const Function_Declaration &node)
                     [](auto &&acc, auto &arg)
                     {
                         acc += (acc.empty()) ? arg : (" " + arg);
-                        return std::move(acc);
+                        return acc;
                     }
             );
     return "(defun " + node.name + " (" + arg_list + "))";
@@ -110,7 +110,7 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                             [this](auto acc, auto &arg)
                             {
                                 acc += (acc.empty()) ? std::string {this->visit(*arg).result()} : " " + std::string {this->visit(*arg).result()};
-                                return std::move(acc);
+                                return acc;
                             }
                     );
                     value = result + ")";

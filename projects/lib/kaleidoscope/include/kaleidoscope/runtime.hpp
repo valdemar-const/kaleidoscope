@@ -196,7 +196,7 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
             [&](auto acc, auto &&elem)
             {
                 acc.emplace_back(eval(*elem));
-                return std::move(acc);
+                return acc;
             }
     );
 

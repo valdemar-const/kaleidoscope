@@ -116,7 +116,7 @@ struct state
     Data_Binder
     operator[](std::string symbol)
     {
-        return std::move(Data_Binder {*this, symbol});
+        return Data_Binder {*this, symbol};
     }
 
   public:
@@ -180,14 +180,14 @@ struct state
     {
         auto operators_info = runtime_.scope().collect_operators_info();
         ast::utils::precedence {operators_info}(ast);
-        return std::move(ast);
+        return ast;
     }
 
     Ast
     apply(Ast ast)
     {
         // пробежаться по
-        return std::move(ast);
+        return ast;
     }
 
   protected:

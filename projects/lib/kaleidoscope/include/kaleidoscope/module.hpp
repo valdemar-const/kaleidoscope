@@ -233,7 +233,7 @@ struct Module
                     {
                         // do nothing
                     }
-                    return std::move(acc);
+                    return acc;
                 }
         );
 
@@ -243,7 +243,7 @@ struct Module
             current_module.insert(result.begin(), result.end());
         }
 
-        return std::move(current_module);
+        return current_module;
     }
 
     const std::any &
