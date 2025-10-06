@@ -46,6 +46,13 @@ inline replicator::replicator(void)
             }
     );
 
+    register_handler<ast::Lexeme_String>(
+            [&](const ast::Lexeme_String &node)
+            {
+                result_.reset(new ast::Lexeme_String(node));
+            }
+    );
+
     register_handler<ast::Variable>(
             [&](const ast::Variable &node)
             {
@@ -140,6 +147,24 @@ inline replicator::replicator(void)
                                     return acc;
                                 }
                         )
+                ));
+            }
+    );
+
+    register_handler<ast::Type_Declaration>(
+            [&](const ast::Type_Declaration &node)
+            {
+                result_.reset(new ast::Type_Declaration(node));
+            }
+    );
+
+    register_handler<ast::Data_Object_Definition_List>(
+            [&](const ast::Data_Object_Definition_List &node)
+            {
+                result_.reset(new ast::Data_Object_Definition_List(
+                        node.names,
+                        node.is_mutable,
+                        (node.type) ? visit(*node.type).result() : nullptr
                 ));
             }
     );

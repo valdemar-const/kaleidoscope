@@ -13,6 +13,6 @@ BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::ast::Operation_Unary, operand)
 BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::ast::Operation_Binary, lhs, rhs)
 BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::ast::Precedence_Agnostic_Expr, first, operations)
 BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::ast::Type_Declaration, name)
-BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::ast::Data_Object_Definition, name)
+BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::ast::Data_Object_Definition_List, names)
 
 BOOST_FUSION_ADAPT_STRUCT(kaleidoscope::Ast, statements)

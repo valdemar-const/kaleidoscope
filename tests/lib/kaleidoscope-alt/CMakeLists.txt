@@ -1,9 +1,9 @@
 find_package(Boost COMPONENTS uuid nowide unit_test_framework REQUIRED)
 find_package(Compiler REQUIRED)
 
-add_executable(test-context)
-target_sources(test-context PRIVATE test_context.cpp)
-target_link_libraries(test-context
+add_executable(test-context-alt)
+target_sources(test-context-alt PRIVATE test_context_alt.cpp)
+target_link_libraries(test-context-alt
   PRIVATE
     compiler::big_object
     compiler::definition_fix
@@ -13,4 +13,4 @@ target_link_libraries(test-context
     Boost::nowide
     Boost::unit_test_framework)
 
-add_test(NAME test-context COMMAND test-context)
+add_test(NAME test-context-alt COMMAND test-context-alt)

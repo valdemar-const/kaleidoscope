@@ -221,6 +221,7 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
                     # this is a single line commentary
                     def foo(a, b, c);                                      # function declaration
                     1;                                                     # numeric lexeme
+                    "3";
                     1 - 2 - 3 ** 5 ** 6 - 4;                               # mathematical expression 1
                     5 + 5 * 2 - 1;                                         # mathematical expression 1
                     g + -(7 + b) * -1;                                     # mathematical expression 1
@@ -235,27 +236,28 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
     preprocess(result);
 
-    BOOST_TEST(result.statements.size() == 7);
+    BOOST_TEST(result.statements.size() == 8);
     BOOST_TEST_MESSAGE(make_listing(result));
 
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
-    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Operation_Binary)));
-    BOOST_TEST((typeid(*result.statements.at(6)) == typeid(kaleidoscope::ast::Function_Defenition)));
+    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Lexeme_String)));
+    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Binary)));
+    BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
 {
     std::string defvar = R"KALEIDOSCOPE(
-                var num : int; # mutable
+                var num, num2 : int; # mutable
                 let num_: int; # immutable
             )KALEIDOSCOPE"s; // num: 0 - by default
 
     auto result = kaleidoscope::Parser::parse(defvar.begin(), defvar.end());
 
     BOOST_TEST(2 == result.statements.size());
-    BOOST_TEST_MESSAGE(compiler::demangle(typeid(*result.statements.at(0)).name()));
-    BOOST_TEST_MESSAGE(compiler::demangle(typeid(*result.statements.at(1)).name()));
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
+    BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
 
     BOOST_TEST_MESSAGE(make_listing(result));
 }

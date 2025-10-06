@@ -72,6 +72,13 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 }
         );
 
+        register_handler<ast::Lexeme_String>(
+                [&](const ast::Lexeme_String &obj)
+                {
+                    value = "\"" + obj.value + "\"";
+                }
+        );
+
         register_handler<ast::Variable>(
                 [&](const ast::Variable &obj)
                 {
@@ -162,12 +169,18 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 }
         );
 
-        register_handler<ast::Data_Object_Definition>(
-                [&](const ast::Data_Object_Definition &obj)
+        register_handler<ast::Data_Object_Definition_List>(
+                [&](const ast::Data_Object_Definition_List &obj)
                 {
+                    auto names =
+                            std::accumulate(
+                                    obj.names.begin(), obj.names.end(), std::string {}, [](auto acc, auto &&name)
+                                    {
+                                        return (acc.empty()) ? name : acc + " " + name;
+                                    }
+                            );
                     std::string result {
-                            obj.name
-                            + " (type " + std::string(this->visit(*obj.type).result()) + ")"
+                            "(type " + std::string(this->visit(*obj.type).result()) + ") " + names
                     };
 
                     value = "(" + std::string((obj.is_mutable) ? "var" : "let") + " " + result + ")";

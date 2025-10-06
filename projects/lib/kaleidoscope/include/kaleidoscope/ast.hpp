@@ -146,6 +146,20 @@ struct Lexeme_Numeric : public NodeCRTP<Lexeme_Numeric>
     Value value;
 };
 
+struct Lexeme_String : public NodeCRTP<Lexeme_String>
+{
+    using Value = std::string;
+
+    ~Lexeme_String(void) override = default;
+
+    Lexeme_String(Value value)
+        : value(value)
+    {
+    }
+
+    Value value;
+};
+
 struct Variable : public NodeCRTP<Variable>
 {
     using Name               = std::string;
@@ -285,11 +299,11 @@ struct Type_Declaration : public NodeCRTP<Type_Declaration>
     Name name;
 };
 
-struct Data_Object_Definition : public NodeCRTP<Data_Object_Definition>
+struct Data_Object_Definition_List : public NodeCRTP<Data_Object_Definition_List>
 {
-    using Name = std::string;
-    using Type = std::unique_ptr<Node>;
-    using Init = std::unique_ptr<Node>;
+    using Names = std::vector<std::string>;
+    using Type  = std::unique_ptr<Node>;
+    using Init  = std::unique_ptr<Node>;
 
     static constexpr Node *type_auto = nullptr;
 
@@ -299,16 +313,16 @@ struct Data_Object_Definition : public NodeCRTP<Data_Object_Definition>
         Mutable
     };
 
-    ~Data_Object_Definition(void) override = default;
+    ~Data_Object_Definition_List(void) override = default;
 
-    Data_Object_Definition(Name name, Mutability is_mutable = Immutable, Type type = {})
-        : name(name)
+    Data_Object_Definition_List(Names names, Mutability is_mutable = Immutable, Type type = {})
+        : names(names)
         , is_mutable(is_mutable)
         , type(std::move(type))
     {
     }
 
-    Name       name;
+    Names      names;
     Mutability is_mutable;
     Type       type;
 };
