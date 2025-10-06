@@ -104,6 +104,29 @@ const auto expr_parsed = [](auto &ctx)
     ));
 };
 
+const auto type_decl_parsed = [](auto &ctx)
+{
+    _val(ctx).reset(new ast::Type_Declaration(_attr(ctx)));
+};
+
+const auto var_parsed = [](auto &ctx)
+{
+    _val(ctx).reset(new ast::Data_Object_Definition(
+            at_c<0>(_attr(ctx)),
+            ast::Data_Object_Definition::Immutable,
+            std::move(at_c<1>(_attr(ctx)))
+    ));
+};
+
+const auto var_mut_parsed = [](auto &ctx)
+{
+    _val(ctx).reset(new ast::Data_Object_Definition(
+            at_c<0>(_attr(ctx)),
+            ast::Data_Object_Definition::Mutable,
+            std::move(at_c<1>(_attr(ctx)))
+    ));
+};
+
 const auto chunk_parsed = [](auto &ctx)
 {
     _val(ctx) = std::move(Ast(std::move(_attr(ctx))));
@@ -120,6 +143,8 @@ using namespace actions;
 const x3::rule<class R_Chunk,     std::vector< std::unique_ptr< ast::Node                     >>> chunk           = "chunk";
 const x3::rule<class R_Stmt_List, std::vector< std::unique_ptr< ast::Node                     >>> stmt_list       = "statement-list";
 const x3::rule<class R_Stmt,                   std::unique_ptr< ast::Node                      >> stmt            = "statement";
+const x3::rule<class R_Type_Decl,              std::unique_ptr< ast::Type_Declaration          >> type_decl       = "type-declaration";
+const x3::rule<class R_Var_Def,                std::unique_ptr< ast::Data_Object_Definition    >> var_def         = "data-object-definition";
 const x3::rule<class R_Fun_Decl,               std::unique_ptr< ast::Function_Declaration      >> fun_decl        = "function-declaration";
 const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node                     >>> fun_block       = "function-block";
 const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition       >> fun_def         = "function-defenition";
@@ -145,12 +170,18 @@ mkkw(S &&kw)
     return x3::lexeme[x3::lit(std::string(kw)) >> !x3::alnum];
 }
 
+const auto kw_var   = mkkw("var");
+const auto kw_let   = mkkw("let");
 const auto kw_def   = mkkw("def");
 const auto kw_end   = mkkw("end");
-const auto reserved = kw_def | kw_end;
+const auto reserved = kw_var | kw_let | kw_def | kw_end;
 
+const auto type_decl_def       = identifier[type_decl_parsed];
 const auto identifier_def      = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
 const auto identifier_list_def = (identifier % ',');
+const auto var                 = (kw_let >> identifier >> ":" >> type_decl)[var_parsed];
+const auto var_mut             = (kw_var >> identifier >> ":" >> type_decl)[var_mut_parsed];
+const auto var_def_def         = var_mut | var;
 const auto fun_decl_def        = (kw_def >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
 const auto fun_block_def       = (expr[emplace_to_vec]) % ';';
 const auto fun_def_def         = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
@@ -169,7 +200,7 @@ const auto expr_next_def = (op >> simple)[expr_next_parsed];
 const auto expr_def      = (simple >> *(expr_next))[expr_parsed];
 const auto expr_list_def = (expr[emplace_to_vec] % ',');
 
-const auto stmt_def      = (fun_def | fun_decl | expr)[variant_node_upcast];
+const auto stmt_def      = (fun_def | fun_decl | var_def | expr)[variant_node_upcast];
 const auto stmt_list_def = stmt[emplace_to_vec] % ';';
 const auto chunk_def     = stmt_list;
 
@@ -177,6 +208,8 @@ BOOST_SPIRIT_DEFINE(
         chunk,
         stmt_list,
         stmt,
+        type_decl,
+        var_def,
         fun_decl,
         fun_block,
         fun_def,

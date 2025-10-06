@@ -46,3 +46,37 @@ Although the AST can be executed directly, a project goal is to
 implement an alternative approach: using an LLVM-based code generation
 module to translate the AST into efficient bytecode for a virtual
 machine.
+
+## Learn kaleidoscope in Y minutes
+
+```kaleidoscope
+# single line comment
+# global module
+
+type i32 {.ordinal, internal.}; # declaration of embedded type
+
+# priority less is most.
+
+operator`+`(lhs: i32, rhs: i32): i32 {. internal, priority=20, associativity=left .}; # implementations internals
+operator`-`(lhs: i32, rhs: i32): i32 {. internal, priority=20, associativity=left .}; # implementations internals
+operator`*`(lhs: i32, rhs: i32): i32 {. internal, priority=10, associativity=left .}; # implementations internals
+operator`/`(lhs: i32, rhs: i32): i32 {. internal, priority=10, associativity=left .}; # implementations internals
+
+module ctypes =
+    export type int = i32; # synonim for type 'i32'
+
+# global module again
+
+import * from ctypes;
+
+function entry(): int =
+    var num: int; # -> num: 0
+    num = 42;     # -> num: 42
+
+    let num_: int = 7;
+    num_ = 42; # -> error: num_ is immutable data object
+
+    num - num_ * 5 / 2 # returned a value of last statement
+
+entry() # call a function
+```

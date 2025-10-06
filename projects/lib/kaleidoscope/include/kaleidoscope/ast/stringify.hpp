@@ -154,6 +154,25 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                     value = "(" + result + ")";
                 }
         );
+
+        register_handler<ast::Type_Declaration>(
+                [&](const ast::Type_Declaration &obj)
+                {
+                    value = obj.name;
+                }
+        );
+
+        register_handler<ast::Data_Object_Definition>(
+                [&](const ast::Data_Object_Definition &obj)
+                {
+                    std::string result {
+                            obj.name
+                            + " (type " + std::string(this->visit(*obj.type).result()) + ")"
+                    };
+
+                    value = "(" + std::string((obj.is_mutable) ? "var" : "let") + " " + result + ")";
+                }
+        );
     }
 
     std::string_view

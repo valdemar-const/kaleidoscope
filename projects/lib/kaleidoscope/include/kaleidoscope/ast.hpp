@@ -271,8 +271,51 @@ struct Precedence_Agnostic_Expr : public NodeCRTP<Precedence_Agnostic_Expr>
     Operations operations;
 };
 
+struct Type_Declaration : public NodeCRTP<Type_Declaration>
+{
+    using Name = std::string;
+
+    ~Type_Declaration(void) override = default;
+
+    Type_Declaration(Name name)
+        : name(name)
+    {
+    }
+
+    Name name;
+};
+
+struct Data_Object_Definition : public NodeCRTP<Data_Object_Definition>
+{
+    using Name = std::string;
+    using Type = std::unique_ptr<Node>;
+    using Init = std::unique_ptr<Node>;
+
+    static constexpr Node *type_auto = nullptr;
+
+    using Mutability = enum : uint8_t
+    {
+        Immutable,
+        Mutable
+    };
+
+    ~Data_Object_Definition(void) override = default;
+
+    Data_Object_Definition(Name name, Mutability is_mutable = Immutable, Type type = {})
+        : name(name)
+        , is_mutable(is_mutable)
+        , type(std::move(type))
+    {
+    }
+
+    Name       name;
+    Mutability is_mutable;
+    Type       type;
+};
+
 // TODO: to implement
 struct If_Expression : public NodeCRTP<If_Expression>
+
 {
     using Condition    = std::unique_ptr<Node>;
     using Expression   = std::unique_ptr<Node>;
