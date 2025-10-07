@@ -466,8 +466,9 @@ BOOST_AUTO_TEST_CASE(eval_lexemes)
     BOOST_TEST(result.has_value());
     if (auto val = result.get_if<double>())
     {
-        BOOST_TEST(1.0 == *val);
-        BOOST_TEST(1.0 == ctx.eval(input).as<double>());
+        BOOST_TEST((1.0 == *val));
+        BOOST_TEST((result == 1.0));
+        BOOST_TEST((1.0 == ctx.eval(input).as<double>()));
     }
 
     std::string str {"\"hello, kaleidoscope!\""};
@@ -476,7 +477,7 @@ BOOST_AUTO_TEST_CASE(eval_lexemes)
     BOOST_TEST(result2.has_value());
     if (std::string *value = result2)
     {
-        BOOST_TEST(*value == "hello, kaleidoscope!");
+        BOOST_TEST((*value == "hello, kaleidoscope!"));
     }
 }
 

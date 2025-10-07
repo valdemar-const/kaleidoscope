@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
     preprocess(result);
 
-    BOOST_TEST(result.statements.size() == 8);
+    BOOST_TEST((result.statements.size() == 8));
     BOOST_TEST_MESSAGE(make_listing(result));
 
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
 
     auto result = kaleidoscope::Parser::parse(defvar.begin(), defvar.end());
 
-    BOOST_TEST(2 == result.statements.size());
+    BOOST_TEST((2 == result.statements.size()));
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
 
@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE(anyany_check)
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
     preprocess(result);
 
-    BOOST_TEST(result.statements.size() == 1);
+    BOOST_TEST((result.statements.size() == 1));
 
     kaleidoscope::ast::INodeRef any_ast = *result.statements.front();
 
@@ -297,8 +297,8 @@ BOOST_AUTO_TEST_CASE(anyany_check)
 
     auto listing2 = stringify(any_ast);
 
-    BOOST_TEST(listing.value() == "5.000000");
-    BOOST_TEST(listing2.value() == listing.value());
+    BOOST_TEST((listing.value() == "5.000000"));
+    BOOST_TEST((listing2.value() == listing.value()));
 }
 
 BOOST_AUTO_TEST_CASE(functional_traits)

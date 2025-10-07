@@ -15,10 +15,29 @@ namespace kaleidoscope
 
 struct runtime
 {
-    struct eval_node; // forward decl
+    struct eval_node;     // forward decl
+    struct ast_promotion; // forward decl
 
     struct result
     {
+        result(void) = default;
+
+        template<typename T>
+            requires(!std::is_same_v<std::decay_t<T>, result>)
+        result(T &&init)
+            : storage_(std::forward<T>(init))
+        {
+        }
+
+      public:
+
+        result(const result &)            = default;
+        result(result &&)                 = default;
+        result &operator=(const result &) = default;
+        result &operator=(result &&)      = default;
+
+      public:
+
         template<typename T>
         operator T *(void)
         {
@@ -26,6 +45,7 @@ struct runtime
         }
 
         template<typename T>
+            requires(!std::is_same_v<std::decay_t<T>, bool> && !std::is_pointer_v<T>)
         operator T(void)
         {
             return as<T>();
@@ -51,9 +71,22 @@ struct runtime
             return storage_.has_value();
         }
 
+        std::optional<std::type_index>
+        type_index(void) const
+        {
+            if (storage_.has_value())
+            {
+                return storage_.type();
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+
         template<typename T>
         result &
-        operator=(T value)
+        operator=(T &&value)
         {
             storage_ = value;
             return *this;
@@ -64,7 +97,7 @@ struct runtime
 
         operator bool(void) const
         {
-            return has_value();
+            return storage_.has_value();
         }
 
       protected:
@@ -95,9 +128,16 @@ struct runtime
         return *current_;
     }
 
+    ast_promotion &
+    get_ast_promotion(void)
+    {
+        return *ast_promotion_;
+    }
+
   protected:
 
     std::unique_ptr<eval_node>                   eval_;
+    std::unique_ptr<ast_promotion>               ast_promotion_;
     std::optional<std::reference_wrapper<Scope>> global_scope_;
     std::list<Scope>                             local_scopes_;
     Scope                                       *current_ = nullptr;
@@ -118,6 +158,25 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     void visit_(const ast::Operation_Unary &node);
     void visit_(const ast::Operation_Binary &node);
     void visit_(const ast::Functional_Call &node);
+
+  protected:
+
+    runtime::result result_;
+
+    std::reference_wrapper<runtime> owner_;
+};
+
+struct runtime::ast_promotion : public ast::utils::Visitor_Node_CRTP<ast_promotion, ast::Node>
+{
+    ast_promotion(runtime &owner);
+
+    runtime::result promote(const Ast &ast);
+    runtime::result promote(const ast::Node &node);
+
+  protected:
+
+    void visit_(const ast::Lexeme_Numeric &node);
+    void visit_(const ast::Lexeme_String &node);
 
   protected:
 
@@ -179,19 +238,29 @@ runtime::eval_node::eval(const ast::Node &node)
 inline void
 runtime::eval_node::visit_(const ast::Lexeme_Numeric &node)
 {
-    std::visit(
-            [&](auto &&val)
-            {
-                result_ = val;
-            },
-            node.value
-    );
+    auto result = owner_.get().get_ast_promotion().promote(node);
+    if (result)
+    {
+        result_ = std::move(result);
+    }
+    else
+    {
+        throw std::runtime_error("unknown value materialization from literal number");
+    }
 }
 
 inline void
 runtime::eval_node::visit_(const ast::Lexeme_String &node)
 {
-    result_ = node.value;
+    auto result = owner_.get().get_ast_promotion().promote(node);
+    if (result)
+    {
+        result_ = std::move(result);
+    }
+    else
+    {
+        throw std::runtime_error("unknown value materialization from literal string");
+    }
 }
 
 inline void
@@ -280,6 +349,7 @@ inline runtime::runtime(void)
 
 inline runtime::runtime(Scope &global_scope)
     : eval_(std::make_unique<eval_node>(*this))
+    , ast_promotion_(std::make_unique<ast_promotion>(*this))
     , global_scope_(global_scope)
 {
     if (global_scope_.has_value())
@@ -295,6 +365,7 @@ inline runtime::runtime(Scope &global_scope)
 
 inline runtime::runtime(const runtime &copy_from)
     : eval_(std::make_unique<eval_node>(*this))
+    , ast_promotion_(std::make_unique<ast_promotion>(*this))
     , global_scope_(copy_from.global_scope_)
     , local_scopes_(copy_from.local_scopes_)
     , current_(copy_from.current_)
@@ -303,6 +374,7 @@ inline runtime::runtime(const runtime &copy_from)
 
 inline runtime::runtime(runtime &&move_from)
     : eval_(std::make_unique<eval_node>(*this))
+    , ast_promotion_(std::make_unique<ast_promotion>(*this))
     , global_scope_(std::move(move_from.global_scope_))
     , local_scopes_(std::move(move_from.local_scopes_))
     , current_(std::move(move_from.current_))
@@ -312,17 +384,19 @@ inline runtime::runtime(runtime &&move_from)
 inline runtime &
 runtime::operator=(const runtime &copy_from)
 {
-    this->eval_         = std::move(std::make_unique<eval_node>(*this));
-    this->global_scope_ = copy_from.global_scope_;
-    this->local_scopes_ = copy_from.local_scopes_;
-    this->current_      = copy_from.current_;
+    this->eval_          = std::move(std::make_unique<eval_node>(*this));
+    this->ast_promotion_ = std::move(std::make_unique<ast_promotion>(*this));
+    this->global_scope_  = copy_from.global_scope_;
+    this->local_scopes_  = copy_from.local_scopes_;
+    this->current_       = copy_from.current_;
     return *this;
 }
 
 inline runtime &
 runtime::operator=(runtime &&move_from)
 {
-    this->eval_ = std::move(std::make_unique<eval_node>(*this));
+    this->eval_          = std::move(std::make_unique<eval_node>(*this));
+    this->ast_promotion_ = std::move(std::make_unique<ast_promotion>(*this));
     std::swap(this->global_scope_, move_from.global_scope_);
     std::swap(this->local_scopes_, move_from.local_scopes_);
     std::swap(this->current_, move_from.current_);
@@ -364,6 +438,56 @@ runtime::pop_scope(void)
         current_ = &local_scopes_.back(); // родительских нет а эта последняя
     }
     return *this;
+}
+
+} // namespace kaleidoscope
+
+namespace kaleidoscope
+{
+
+inline runtime::ast_promotion::ast_promotion(runtime &owner)
+    : owner_(owner)
+{
+    register_method_handler<ast::Lexeme_Numeric>(
+            static_cast<void (runtime::ast_promotion::*)(const ast::Lexeme_Numeric &)>(&runtime::ast_promotion::visit_)
+    );
+
+    register_method_handler<ast::Lexeme_String>(
+            static_cast<void (runtime::ast_promotion::*)(const ast::Lexeme_String &)>(&runtime::ast_promotion::visit_)
+    );
+}
+
+inline runtime::result
+runtime::ast_promotion::promote(const Ast &ast)
+{
+    for (auto &&stmt : ast.statements)
+    {
+        result_ = promote(*stmt);
+    }
+    return result_;
+}
+
+inline runtime::result
+runtime::ast_promotion::promote(const ast::Node &node)
+{
+    visit(node);
+    return result_;
+}
+
+inline void
+runtime::ast_promotion::visit_(const ast::Lexeme_Numeric &node)
+{
+    result_ = std::visit([](const auto &value) -> runtime::result
+                         {
+                             return value;
+                         },
+                         node.value);
+}
+
+inline void
+runtime::ast_promotion::visit_(const ast::Lexeme_String &node)
+{
+    result_ = node.value;
 }
 
 } // namespace kaleidoscope

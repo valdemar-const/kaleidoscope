@@ -47,6 +47,8 @@ implement an alternative approach: using an LLVM-based code generation
 module to translate the AST into efficient bytecode for a virtual
 machine.
 
+Syntax Literal promotions also configurable.
+
 ## Learn kaleidoscope in Y minutes
 
 ```kaleidoscope
