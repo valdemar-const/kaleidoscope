@@ -9,5 +9,5 @@ fi
 # Перебираем все аргументы‑каталоги
 for dir in "$@"; do
     # Тело цикла оставляем без изменений
-    $(bash ./full_md_listing.sh $dir >> kaleidoscope_src.md)
+    ./full_md_listing.sh "$dir"
 done

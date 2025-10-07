@@ -20,9 +20,15 @@ struct runtime
     struct result
     {
         template<typename T>
+        operator T *(void)
+        {
+            return get_if<T>();
+        }
+
+        template<typename T>
         operator T(void)
         {
-            return T {};
+            return as<T>();
         }
 
         template<typename T>
@@ -30,6 +36,13 @@ struct runtime
         as(void)
         {
             return std::any_cast<T>(storage_);
+        }
+
+        template<typename T>
+        T *
+        get_if(void)
+        {
+            return std::any_cast<T>(&storage_);
         }
 
         bool
@@ -48,6 +61,11 @@ struct runtime
 
         template<typename T>
         bool operator==(const T &rhs);
+
+        operator bool(void) const
+        {
+            return has_value();
+        }
 
       protected:
 
@@ -95,6 +113,7 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
   protected:
 
     void visit_(const ast::Lexeme_Numeric &node);
+    void visit_(const ast::Lexeme_String &node);
     void visit_(const ast::Variable &node);
     void visit_(const ast::Operation_Unary &node);
     void visit_(const ast::Operation_Binary &node);
@@ -117,6 +136,10 @@ inline runtime::eval_node::eval_node(runtime &owner)
 {
     register_method_handler<ast::Lexeme_Numeric>(
             static_cast<void (runtime::eval_node::*)(const ast::Lexeme_Numeric &)>(&runtime::eval_node::visit_)
+    );
+
+    register_method_handler<ast::Lexeme_String>(
+            static_cast<void (runtime::eval_node::*)(const ast::Lexeme_String &)>(&runtime::eval_node::visit_)
     );
 
     register_method_handler<ast::Variable>(
@@ -163,6 +186,12 @@ runtime::eval_node::visit_(const ast::Lexeme_Numeric &node)
             },
             node.value
     );
+}
+
+inline void
+runtime::eval_node::visit_(const ast::Lexeme_String &node)
+{
+    result_ = node.value;
 }
 
 inline void

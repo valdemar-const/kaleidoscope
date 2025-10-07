@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 toplevel=$1
 
 printf "# Source dir listing ($toplevel)\n\n"

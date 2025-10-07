@@ -31,9 +31,9 @@ struct F
   public:
 
     F(void)
-        : preprocess(operators)
     {
         BOOST_TEST_MESSAGE("setup fixture");
+        ctx.import(build_context());
     }
 
     ~F(void)
@@ -55,83 +55,429 @@ struct F
 
   public:
 
-    const precedence::Bin_Op_Precedence operators = {
-            std::make_pair(
-                    "**",
-                    kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
-                            .associativity = Associativity::Right,
-                            .precedence    = 0
-                    }
-            ),
-            std::make_pair(
-                    "*",
-                    kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
-                            .associativity = Associativity::Left,
-                            .precedence    = 10
-                    }
-            ),
-            std::make_pair(
-                    "/",
-                    kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
-                            .associativity = Associativity::Left,
-                            .precedence    = 10
-                    }
-            ),
-            std::make_pair(
-                    "+",
-                    kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
-                            .associativity = Associativity::Left,
-                            .precedence    = 20
-                    }
-            ),
-            std::make_pair(
-                    "-",
-                    kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
-                            .associativity = Associativity::Left,
-                            .precedence    = 20
-                    }
-            )
-    };
-
-    precedence preprocess;
-
     kaleidoscope::state ctx;
+
+  protected:
+
+    kaleidoscope::Module
+    build_context(void)
+    {
+        using namespace std::string_literals;
+        using namespace kaleidoscope;
+        using Kind          = kaleidoscope::Module::operator_properties::Kind;
+        using Associativity = kaleidoscope::Module::operator_properties::Associativity;
+
+        Module context;
+        // script::core
+
+        // - unary ops:
+
+        context.bind_op(
+                "+",
+                Module::Operator {
+                        {.kind = Kind::Unary, .associativity = Associativity::Left, .precedence = 20},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 1)
+                            {
+                                return +(std::any_cast<Result>(args[0]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`+` requires 1 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "-",
+                Module::Operator {
+                        {.kind = Kind::Unary, .associativity = Associativity::Left, .precedence = 20},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 1)
+                            {
+                                return -(std::any_cast<Result>(args[0]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`-` requires 1 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "!",
+                Module::Operator {
+                        {.kind = Kind::Unary, .associativity = Associativity::Left, .precedence = 20},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 1)
+                            {
+                                bool is_true = std::any_cast<Result>(args[0]).as<double>() != 0.0;
+
+                                return static_cast<double>(!is_true);
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`!` requires 1 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        // '!'
+        // '~'
+
+        // - binary ops:
+
+        context.bind_op(
+                "*",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 30},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return std::any_cast<Result>(args[0]).as<double>()
+                                     * std::any_cast<Result>(args[1]).as<double>();
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`*` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "/",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 30},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return std::any_cast<Result>(args[0]).as<double>()
+                                     / std::any_cast<Result>(args[1]).as<double>();
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`/` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "%",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 30},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                auto lhs = std::any_cast<Result>(args[0]).as<double>();
+                                auto rhs = std::any_cast<Result>(args[1]).as<double>();
+
+                                return static_cast<double>(
+                                        static_cast<int>(lhs) % static_cast<int>(rhs)
+                                );
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`%` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "+",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 40},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return std::any_cast<Result>(args[0]).as<double>()
+                                     + std::any_cast<Result>(args[1]).as<double>();
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`+` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "-",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 40},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return std::any_cast<Result>(args[0]).as<double>()
+                                     - std::any_cast<Result>(args[1]).as<double>();
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`-` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        // logic op
+
+        context.bind_op(
+                ">",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                > std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`>` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                ">=",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                >= std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`>=` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "<",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                < std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`<` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "<=",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                <= std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`<=` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "==",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 70},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                == std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`==` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "!=",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 70},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                != std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`!=` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        // "&"  80
+        // "^"  90
+        // "|"  100
+
+        context.bind_op(
+                "&&",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 110},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                && std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`&&` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_op(
+                "||",
+                Module::Operator {
+                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 120},
+                        [](std::vector<std::any> args) -> std::any
+                        {
+                            using Result = runtime::result;
+
+                            if (args.size() == 2)
+                            {
+                                return (double)(std::any_cast<Result>(args[0]).as<double>()
+                                                || std::any_cast<Result>(args[1]).as<double>());
+                            }
+                            else
+                            {
+                                throw std::invalid_argument("core::operator`||` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                            }
+                        }
+                }
+        );
+
+        context.bind_func(
+                "if",
+                [](std::vector<std::any> args) -> std::any
+                {
+                    using Result = runtime::result;
+
+                    if (args.size() == 3)
+                    {
+                        constexpr auto False = 0.0;
+                        if (std::any_cast<Result>(args[0]).as<double>() != False)
+                        {
+                            return std::any_cast<Result>(args[1]).as<double>();
+                        }
+                        else
+                        {
+                            return std::any_cast<Result>(args[2]).as<double>();
+                        }
+                    }
+                    else
+                    {
+                        throw std::invalid_argument("core::if requires 3 arguments, but "s + std::to_string(args.size()) + " passed!");
+                    }
+                }
+        );
+
+        // boolean constants
+
+        context.bind_var("true", 1.0);
+        context.bind_var("false", 0.0);
+
+        return context;
+    }
 };
 
 BOOST_FIXTURE_TEST_SUITE(s, F)
 
 BOOST_AUTO_TEST_CASE(eval_lexemes)
 {
-    std::string input = R"KALEIDOSCOPE(
-                    # this is a single line commentary
-                    def foo(a, b, c);                                      # function declaration
-                    1;                                                     # numeric lexeme
-                    1 - 2 - 3 ** 5 ** 6 - 4;                               # mathematical expression 1
-                    5 + 5 * 2 - 1;                                         # mathematical expression 1
-                    g + -(7 + b) * -1;                                     # mathematical expression 1
-                    a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f; # mathematical expression 1
-                    # function definition
-                    def foo(a, b, c)
-                        (a - b) * c;
-                        a - b * c
-                    end
-                )KALEIDOSCOPE"s;
+    std::string input {"1"};
 
-    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
-    preprocess(result);
+    auto result = ctx.eval(input);
+    BOOST_TEST(result.has_value());
+    if (auto val = result.get_if<double>())
+    {
+        BOOST_TEST(1.0 == *val);
+        BOOST_TEST(1.0 == ctx.eval(input).as<double>());
+    }
 
-    BOOST_TEST(result.statements.size() == 7);
-    BOOST_TEST_MESSAGE(make_listing(result));
+    std::string str {"\"hello, kaleidoscope!\""};
 
-    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
-    BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
-    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Operation_Binary)));
-    BOOST_TEST((typeid(*result.statements.at(6)) == typeid(kaleidoscope::ast::Function_Defenition)));
+    auto result2 = ctx.eval(input);
+    BOOST_TEST(result2.has_value());
+    if (std::string *value = result2)
+    {
+        BOOST_TEST(*value == "hello, kaleidoscope!");
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
