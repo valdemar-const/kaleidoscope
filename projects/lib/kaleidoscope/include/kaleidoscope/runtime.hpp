@@ -88,7 +88,7 @@ struct runtime
         result &
         operator=(T &&value)
         {
-            storage_ = value;
+            storage_ = std::forward<T>(value);
             return *this;
         }
 

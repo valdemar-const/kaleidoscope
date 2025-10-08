@@ -6,6 +6,7 @@
 
 #include <kaleidoscope/module.hpp>
 #include <kaleidoscope/runtime.hpp>
+#include <kaleidoscope/type_registry.hpp>
 
 #include <unordered_map>
 #include <span>
@@ -196,6 +197,7 @@ struct state
 
   protected:
 
+    Type_Registry     types_;
     Module            global_;
     runtime           runtime_;
     Ast               state_body_;
