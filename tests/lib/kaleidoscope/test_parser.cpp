@@ -251,13 +251,19 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
     std::string defvar = R"KALEIDOSCOPE(
                 var num, num2 : int; # mutable
                 let num_: int; # immutable
+                1;
+                !1;
+                !0;
             )KALEIDOSCOPE"s; // num: 0 - by default
 
     auto result = kaleidoscope::Parser::parse(defvar.begin(), defvar.end());
 
-    BOOST_TEST((2 == result.statements.size()));
+    BOOST_TEST((5 == result.statements.size()));
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
+    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
+    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Unary)));
+    BOOST_TEST((typeid(*result.statements.at(4)) == typeid(kaleidoscope::ast::Operation_Unary)));
 
     BOOST_TEST_MESSAGE(make_listing(result));
 }

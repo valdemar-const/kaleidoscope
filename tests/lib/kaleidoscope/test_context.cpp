@@ -481,4 +481,16 @@ BOOST_AUTO_TEST_CASE(eval_lexemes)
     }
 }
 
+BOOST_AUTO_TEST_CASE(eval_operators)
+{
+    BOOST_REQUIRE_THROW(ctx.eval("1 =%= 1"), std::runtime_error); // unknown operator
+
+    BOOST_TEST((ctx.eval("-1") == -1.0)); // FIXME: parse error
+    BOOST_TEST((ctx.eval("+1") == +1.0)); // FIXME: parse error
+    BOOST_TEST((ctx.eval("!0") == 1.0));  // FIXME: parse error
+    BOOST_TEST((ctx.eval("!1") == 0.0));  // FIXME: parse error
+
+    BOOST_TEST((ctx.eval("1 + 1") == 2.0));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
