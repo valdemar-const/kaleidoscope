@@ -74,32 +74,42 @@ const auto fun_call_parsed = [](auto &ctx)
     _val(ctx).reset(new ast::Functional_Call(at_c<0>(_attr(ctx)), std::move(at_c<1>(_attr(ctx)))));
 };
 
+const auto unary_expr_parsed = [](auto &ctx)
+{
+    auto &op   = at_c<0>(_attr(ctx));
+    auto &expr = at_c<1>(_attr(ctx));
+
+    _val(ctx).reset(new ast::Operation_Unary(op, std::move(expr)));
+};
+
 const auto expr_next_parsed = [](auto &ctx)
 {
-#if 1
     auto &ops     = at_c<0>(_attr(ctx));
     auto &operand = at_c<1>(_attr(ctx));
     if (ops.size() == 1)
     {
         _val(ctx) = std::move(std::make_pair(ops.front(), std::move(operand)));
     }
-    else if (ops.size() == 2)
+    else if (ops.size() > 1)
     {
-        _val(ctx) = std::move(std::make_pair(ops.front(), std::make_unique<ast::Operation_Unary>(ops.back(), std::move(operand))));
+        auto unary_expression =
+                std::accumulate(
+                        ops.rbegin(), ops.rend() - 1, std::unique_ptr<ast::Node> {operand.release()}, [](auto acc, auto &&op)
+                        {
+                            return std::unique_ptr<ast::Node>(new ast::Operation_Unary {op, std::move(acc)});
+                        }
+                );
+        _val(ctx) = std::move(std::make_pair(ops.front(), std::move(unary_expression)));
     }
     else
     {
-        _pass(ctx) = false;
+        // do nothing
     }
-#else
-    auto &op      = at_c<0>(_attr(ctx));
-    auto &operand = at_c<1>(_attr(ctx));
-    _val(ctx)     = std::move(std::make_pair(op, std::move(operand)));
-#endif
 };
 
 const auto expr_parsed = [](auto &ctx)
 {
+#if 1
     auto &first      = at_c<0>(_attr(ctx));
     auto &operations = at_c<1>(_attr(ctx));
 
@@ -107,6 +117,27 @@ const auto expr_parsed = [](auto &ctx)
             std::move(first),
             std::move(operations)
     ));
+#else
+    auto &maybe_op   = at_c<0>(_attr(ctx));
+    auto &expr       = at_c<1>(_attr(ctx));
+    auto &operations = at_c<2>(_attr(ctx));
+
+    std::unique_ptr<ast::Node> first;
+
+    if (maybe_op.has_value())
+    {
+        first.reset(new ast::Operation_Unary {maybe_op.value(), std::move(expr)});
+    }
+    else
+    {
+        first = std::move(expr);
+    }
+
+    _val(ctx).reset(new ast::Precedence_Agnostic_Expr(
+            std::move(first),
+            std::move(operations)
+    ));
+#endif
 };
 
 const auto type_decl_parsed = [](auto &ctx)
@@ -145,27 +176,29 @@ namespace x3 = boost::spirit::x3;
 using namespace actions;
 
 // clang-format off
-const x3::rule<class R_Chunk,     std::vector< std::unique_ptr< ast::Node                       >>> chunk         = "chunk";
-const x3::rule<class R_Stmt_List, std::vector< std::unique_ptr< ast::Node                       >>> stmt_list     = "statement-list";
-const x3::rule<class R_Stmt,                   std::unique_ptr< ast::Node                        >> stmt          = "statement";
-const x3::rule<class R_Type_Decl,              std::unique_ptr< ast::Type_Declaration            >> type_decl     = "type-declaration";
-const x3::rule<class R_Var_Def,                std::unique_ptr< ast::Data_Object_Definition_List >> var_def       = "data-object-definition";
-const x3::rule<class R_Fun_Decl,               std::unique_ptr< ast::Function_Declaration        >> fun_decl      = "function-declaration";
-const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node                       >>> fun_block     = "function-block";
-const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition         >> fun_def       = "function-defenition";
-const x3::rule<class R_Fun_Def,   std::vector< std::unique_ptr< ast::Node                       >>> expr_list     = "expression-list";
-const x3::rule<class R_Expr,                   std::unique_ptr< ast::Precedence_Agnostic_Expr    >> expr          = "expression-raw";
+const x3::rule<class R_Chunk,     std::vector< std::unique_ptr< ast::Node                       >>> chunk           = "chunk";
+const x3::rule<class R_Stmt_List, std::vector< std::unique_ptr< ast::Node                       >>> stmt_list       = "statement-list";
+const x3::rule<class R_Stmt,                   std::unique_ptr< ast::Node                        >> stmt            = "statement";
+const x3::rule<class R_Type_Decl,              std::unique_ptr< ast::Type_Declaration            >> type_decl       = "type-declaration";
+const x3::rule<class R_Var_Def,                std::unique_ptr< ast::Data_Object_Definition_List >> var_def         = "data-object-definition";
+const x3::rule<class R_Fun_Decl,               std::unique_ptr< ast::Function_Declaration        >> fun_decl        = "function-declaration";
+const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node                       >>> fun_block       = "function-block";
+const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition         >> fun_def         = "function-defenition";
+const x3::rule<class R_Fun_Def,   std::vector< std::unique_ptr< ast::Node                       >>> expr_list       = "expression-list";
+const x3::rule<class R_Expr,                   std::unique_ptr< ast::Precedence_Agnostic_Expr    >> expr            = "expression-raw";
 const x3::rule<class R_Expr_Next,   std::pair<
                                                ast::Precedence_Agnostic_Expr::Op,
                                                std::unique_ptr< ast::Node >
-                                             >                                                  > expr_next       = "expression-continue";
-const x3::rule<class R_Simple,                 std::unique_ptr< ast::Node                      >> simple          = "simple";
-const x3::rule<class R_Fun_Call,               std::unique_ptr< ast::Functional_Call           >> fun_call        = "functional-call";
-const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable                  >> variable        = "variable";
-const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_Numeric            >> number          = "number";
-const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_String             >> string          = "string";
-const x3::rule<class R_Identifier_List,        std::vector<     std::string                    >> identifier_list = "identifier-list";
-const x3::rule<class R_Identifier,                              std::string                     > identifier      = "identifier";
+                                             >                                                    > expr_next       = "expression-continue";
+const x3::rule<class R_Atom,                   std::unique_ptr< ast::Node                        >> atom            = "atom";
+const x3::rule<class R_Prefix_Expr,            std::unique_ptr< ast::Node                        >> prefix_expr     = "prefix-expression";
+const x3::rule<class R_Simple,                 std::unique_ptr< ast::Node                        >> simple          = "simple";
+const x3::rule<class R_Fun_Call,               std::unique_ptr< ast::Functional_Call             >> fun_call        = "functional-call";
+const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable                    >> variable        = "variable";
+const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_Numeric              >> number          = "number";
+const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_String               >> string          = "string";
+const x3::rule<class R_Identifier_List,        std::vector<     std::string                      >> identifier_list = "identifier-list";
+const x3::rule<class R_Identifier,                              std::string                       > identifier      = "identifier";
 
 // clang-format on
 
@@ -196,15 +229,22 @@ const auto variable_def        = identifier[variable_parsed];
 const auto number_def          = x3::double_[number_parsed];
 const auto string_def          = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
 
-const auto op = +x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';')];
-const auto simple_def =
+const auto op  = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';')];
+const auto ops = +op;
+const auto atom_def =
         (number
-         | string
+         | string)[variant_node_upcast];
+
+const auto simple_def =
+        (atom
          | fun_call
          | variable
          | (x3::lit('(') >> expr >> ')'))[variant_node_upcast];
 
-const auto expr_next_def = (op >> simple)[expr_next_parsed];
+const auto prefix_expr_def =
+        (ops >> simple)[unary_expr_parsed] | simple;
+
+const auto expr_next_def = (ops >> simple)[expr_next_parsed];
 const auto expr_def      = (simple >> *(expr_next))[expr_parsed];
 const auto expr_list_def = (expr[emplace_to_vec] % ',');
 
@@ -222,8 +262,10 @@ BOOST_SPIRIT_DEFINE(
         fun_block,
         fun_def,
         expr,
+        prefix_expr,
         expr_next,
         expr_list,
+        atom,
         simple,
         fun_call,
         variable,

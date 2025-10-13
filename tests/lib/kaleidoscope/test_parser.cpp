@@ -252,20 +252,24 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
                 var num, num2 : int; # mutable
                 let num_: int; # immutable
                 1;
+                1 + - -1;
                 !1;
                 !0;
             )KALEIDOSCOPE"s; // num: 0 - by default
 
     auto result = kaleidoscope::Parser::parse(defvar.begin(), defvar.end());
+    preprocess(result);
+    BOOST_TEST_MESSAGE(make_listing(result));
 
-    BOOST_TEST((5 == result.statements.size()));
+    BOOST_TEST((6 == result.statements.size()));
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
-    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Unary)));
-    BOOST_TEST((typeid(*result.statements.at(4)) == typeid(kaleidoscope::ast::Operation_Unary)));
+    BOOST_TEST_MESSAGE(compiler::demangle(typeid(*result.statements.at(2)).name()));
+    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Binary)));
 
-    BOOST_TEST_MESSAGE(make_listing(result));
+    BOOST_TEST((typeid(*result.statements.at(4)) == typeid(kaleidoscope::ast::Operation_Unary)));
+    BOOST_TEST((typeid(*result.statements.at(5)) == typeid(kaleidoscope::ast::Operation_Unary)));
 }
 
 BOOST_AUTO_TEST_CASE(anyany_check)
