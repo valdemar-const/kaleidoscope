@@ -191,13 +191,14 @@ const x3::rule<class R_Expr_Next,   std::pair<
                                                std::unique_ptr< ast::Node >
                                              >                                                    > expr_next       = "expression-continue";
 const x3::rule<class R_Atom,                   std::unique_ptr< ast::Node                        >> atom            = "atom";
+const x3::rule<class R_Postfix_Expr,           std::unique_ptr< ast::Node                        >> postfix_expr    = "postfix-expression";
 const x3::rule<class R_Prefix_Expr,            std::unique_ptr< ast::Node                        >> prefix_expr     = "prefix-expression";
 const x3::rule<class R_Simple,                 std::unique_ptr< ast::Node                        >> simple          = "simple";
 const x3::rule<class R_Fun_Call,               std::unique_ptr< ast::Functional_Call             >> fun_call        = "functional-call";
 const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable                    >> variable        = "variable";
 const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_Numeric              >> number          = "number";
 const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_String               >> string          = "string";
-const x3::rule<class R_Identifier_List,        std::vector<     std::string                      >> identifier_list = "identifier-list";
+const x3::rule<class R_Identifier_List,        std::vector    < std::string                      >> identifier_list = "identifier-list";
 const x3::rule<class R_Identifier,                              std::string                       > identifier      = "identifier";
 
 // clang-format on
@@ -241,8 +242,10 @@ const auto simple_def =
          | variable
          | (x3::lit('(') >> expr >> ')'))[variant_node_upcast];
 
+const auto postfix_expr    = (simple >> ops); // TODO: implement
 const auto prefix_expr_def =
-        (ops >> simple)[unary_expr_parsed] | simple;
+        (ops >> postfix_expr)[unary_expr_parsed]
+        | simple; // TODO: implement
 
 const auto expr_next_def = (ops >> simple)[expr_next_parsed];
 const auto expr_def      = (simple >> *(expr_next))[expr_parsed];
