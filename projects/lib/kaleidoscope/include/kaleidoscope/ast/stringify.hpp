@@ -18,7 +18,7 @@ namespace kaleidoscope::ast::utils
 {
 template<>
 std::string
-to_string<Lexeme_Numeric>(const Lexeme_Numeric &node)
+to_string<Literal_Numeric>(const Literal_Numeric &node)
 {
     std::string result;
     std::visit(
@@ -65,15 +65,15 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
 {
     Stringify(void)
     {
-        register_handler<ast::Lexeme_Numeric>(
-                [&](const ast::Lexeme_Numeric &obj)
+        register_handler<ast::Literal_Numeric>(
+                [&](const ast::Literal_Numeric &obj)
                 {
                     value = to_string(obj);
                 }
         );
 
-        register_handler<ast::Lexeme_String>(
-                [&](const ast::Lexeme_String &obj)
+        register_handler<ast::Literal_String>(
+                [&](const ast::Literal_String &obj)
                 {
                     value = "\"" + obj.value + "\"";
                 }

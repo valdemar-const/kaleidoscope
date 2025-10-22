@@ -131,14 +131,14 @@ struct NodeCRTP : public Node
     ~NodeCRTP(void) override = default;
 };
 
-struct Lexeme_Numeric : public NodeCRTP<Lexeme_Numeric>
+struct Literal_Numeric : public NodeCRTP<Literal_Numeric>
 {
     using f64   = double;
     using Value = std::variant<f64>;
 
-    ~Lexeme_Numeric(void) override = default;
+    ~Literal_Numeric(void) override = default;
 
-    Lexeme_Numeric(Value value)
+    Literal_Numeric(Value value)
         : value(value)
     {
     }
@@ -146,13 +146,13 @@ struct Lexeme_Numeric : public NodeCRTP<Lexeme_Numeric>
     Value value;
 };
 
-struct Lexeme_String : public NodeCRTP<Lexeme_String>
+struct Literal_String : public NodeCRTP<Literal_String>
 {
     using Value = std::string;
 
-    ~Lexeme_String(void) override = default;
+    ~Literal_String(void) override = default;
 
-    Lexeme_String(Value value)
+    Literal_String(Value value)
         : value(value)
     {
     }

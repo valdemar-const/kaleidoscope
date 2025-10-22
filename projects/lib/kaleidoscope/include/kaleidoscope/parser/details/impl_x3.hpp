@@ -35,12 +35,12 @@ const auto variant_node_upcast = [](auto &ctx)
 
 const auto number_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Lexeme_Numeric(_attr(ctx)));
+    _val(ctx).reset(new ast::Literal_Numeric(_attr(ctx)));
 };
 
 const auto string_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Lexeme_String(std::move(_attr(ctx))));
+    _val(ctx).reset(new ast::Literal_String(std::move(_attr(ctx))));
 };
 
 const auto variable_parsed = [](auto &ctx)
@@ -196,8 +196,8 @@ const x3::rule<class R_Prefix_Expr,            std::unique_ptr< ast::Node       
 const x3::rule<class R_Simple,                 std::unique_ptr< ast::Node                        >> simple          = "simple";
 const x3::rule<class R_Fun_Call,               std::unique_ptr< ast::Functional_Call             >> fun_call        = "functional-call";
 const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable                    >> variable        = "variable";
-const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_Numeric              >> number          = "number";
-const x3::rule<class R_Number,                 std::unique_ptr< ast::Lexeme_String               >> string          = "string";
+const x3::rule<class R_Number,                 std::unique_ptr< ast::Literal_Numeric              >> number          = "number";
+const x3::rule<class R_Number,                 std::unique_ptr< ast::Literal_String               >> string          = "string";
 const x3::rule<class R_Identifier_List,        std::vector    < std::string                      >> identifier_list = "identifier-list";
 const x3::rule<class R_Identifier,                              std::string                       > identifier      = "identifier";
 
@@ -210,11 +210,54 @@ mkkw(S &&kw)
     return x3::lexeme[x3::lit(std::string(kw)) >> !x3::alnum];
 }
 
-const auto kw_var   = mkkw("var");
-const auto kw_let   = mkkw("let");
-const auto kw_def   = mkkw("def");
-const auto kw_end   = mkkw("end");
-const auto reserved = kw_var | kw_let | kw_def | kw_end;
+const auto kw_import    = mkkw("import");    // module system
+const auto kw_from      = mkkw("from");      // module system
+const auto kw_type      = mkkw("type");      // type definition
+const auto kw_struct    = mkkw("struct");    // memory layout
+const auto kw_tuple     = mkkw("tuple");     // memory layout
+const auto kw_array     = mkkw("array");     // memory layout
+const auto kw_array     = mkkw("vector");    // managed array
+const auto kw_range     = mkkw("range");     // range semantic
+const auto kw_any_of    = mkkw("any_of");    // tagged union memory layout
+const auto kw_any_with  = mkkw("any_with");  // polymorphic value type (erased)
+const auto kw_opt       = mkkw("opt");       // optional value semantic
+const auto kw_ptr       = mkkw("ptr");       // pointer semantic
+const auto kw_ref       = mkkw("ref");       // shared managed value
+const auto kw_owned     = mkkw("owned");     // unique managed value
+const auto kw_weak      = mkkw("weak");      // observable unmanaged value
+const auto kw_any       = mkkw("any_with");  // type erased configurable value type
+const auto kw_var       = mkkw("var");       // mutable stack value
+const auto kw_let       = mkkw("let");       // stack value
+const auto kw_mut       = mkkw("mut");       // allow value mutation
+const auto kw_operator  = mkkw("operator");  // operator definition
+const auto kw_literal   = mkkw("literal");   // custom lexeme suffixes
+const auto kw_function  = mkkw("function");  // function definition
+const auto kw_interface = mkkw("interface"); // interface for dynamic dispatch (type erasure)
+const auto kw_implement = mkkw("implement"); // interface implementation
+const auto kw_return    = mkkw("return");    // explicit return statement
+const auto kw_block     = mkkw("block");     // operator composition label system
+const auto kw_do        = mkkw("do");        // start code block
+const auto kw_end       = mkkw("end");       // end code block
+const auto kw_loop      = mkkw("loop");      // endless loop
+const auto kw_repeat    = mkkw("repeat");    // loop with postcondition
+const auto kw_until     = mkkw("until");     // postcondition expression
+const auto kw_while     = mkkw("while");     // loop with precondition
+const auto kw_for       = mkkw("for");       // range loop
+const auto kw_in        = mkkw("in");        // range expression
+const auto kw_match     = mkkw("match");     // range expression
+const auto kw_of        = mkkw("of");        // range expression
+
+const auto reserved =
+        kw_import | kw_from
+        | kw_type | kw_struct | kw_tuple | kw_array | kw_range | kw_opt
+        | kw_ref | kw_owned | kw_weak
+        | kw_var | kw_let | kw_mut
+        | kw_operator | kw_literal | kw_function | kw_return
+        | kw_interface | kw_implement
+        | kw_block | kw_do | kw_end
+        | kw_loop | kw_repeat | kw_until | kw_while
+        | kw_for | kw_in
+        | kw_match | kw_of;
 
 const auto type_decl_def       = identifier[type_decl_parsed];
 const auto identifier_def      = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
@@ -222,7 +265,7 @@ const auto identifier_list_def = (identifier % ',');
 const auto var                 = (kw_let >> identifier_list >> ":" >> type_decl)[vars_parsed];
 const auto var_mut             = (kw_var >> identifier_list >> ":" >> type_decl)[var_mut_parsed];
 const auto var_def_def         = var_mut | var;
-const auto fun_decl_def        = (kw_def >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
+const auto fun_decl_def        = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
 const auto fun_block_def       = (expr[emplace_to_vec]) % ';';
 const auto fun_def_def         = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
 const auto fun_call_def        = (identifier >> '(' >> expr_list >> ')')[fun_call_parsed];
@@ -230,7 +273,7 @@ const auto variable_def        = identifier[variable_parsed];
 const auto number_def          = x3::double_[number_parsed];
 const auto string_def          = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
 
-const auto op  = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';')];
+const auto op  = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';' - ':' - '.')];
 const auto ops = +op;
 const auto atom_def =
         (number
@@ -242,8 +285,8 @@ const auto simple_def =
          | variable
          | (x3::lit('(') >> expr >> ')'))[variant_node_upcast];
 
-const auto postfix_expr    = (simple >> ops); // TODO: implement
-const auto prefix_expr_def =
+const auto postfix_expr_def = (simple >> ops); // TODO: implement
+const auto prefix_expr_def  =
         (ops >> postfix_expr)[unary_expr_parsed]
         | simple; // TODO: implement
 
@@ -266,6 +309,7 @@ BOOST_SPIRIT_DEFINE(
         fun_def,
         expr,
         prefix_expr,
+        postfix_expr,
         expr_next,
         expr_list,
         atom,

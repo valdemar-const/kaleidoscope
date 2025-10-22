@@ -39,17 +39,17 @@ namespace kaleidoscope::ast::utils
 
 inline replicator::replicator(void)
 {
-    register_handler<ast::Lexeme_Numeric>(
-            [&](const ast::Lexeme_Numeric &node)
+    register_handler<ast::Literal_Numeric>(
+            [&](const ast::Literal_Numeric &node)
             {
-                result_.reset(new ast::Lexeme_Numeric(node));
+                result_.reset(new ast::Literal_Numeric(node));
             }
     );
 
-    register_handler<ast::Lexeme_String>(
-            [&](const ast::Lexeme_String &node)
+    register_handler<ast::Literal_String>(
+            [&](const ast::Literal_String &node)
             {
-                result_.reset(new ast::Lexeme_String(node));
+                result_.reset(new ast::Literal_String(node));
             }
     );
 

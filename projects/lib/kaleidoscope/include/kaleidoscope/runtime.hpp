@@ -152,8 +152,8 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
 
   protected:
 
-    void visit_(const ast::Lexeme_Numeric &node);
-    void visit_(const ast::Lexeme_String &node);
+    void visit_(const ast::Literal_Numeric &node);
+    void visit_(const ast::Literal_String &node);
     void visit_(const ast::Variable &node);
     void visit_(const ast::Operation_Unary &node);
     void visit_(const ast::Operation_Binary &node);
@@ -175,8 +175,8 @@ struct runtime::ast_promotion : public ast::utils::Visitor_Node_CRTP<ast_promoti
 
   protected:
 
-    void visit_(const ast::Lexeme_Numeric &node);
-    void visit_(const ast::Lexeme_String &node);
+    void visit_(const ast::Literal_Numeric &node);
+    void visit_(const ast::Literal_String &node);
 
   protected:
 
@@ -193,12 +193,12 @@ namespace kaleidoscope
 inline runtime::eval_node::eval_node(runtime &owner)
     : owner_(owner)
 {
-    register_method_handler<ast::Lexeme_Numeric>(
-            static_cast<void (runtime::eval_node::*)(const ast::Lexeme_Numeric &)>(&runtime::eval_node::visit_)
+    register_method_handler<ast::Literal_Numeric>(
+            static_cast<void (runtime::eval_node::*)(const ast::Literal_Numeric &)>(&runtime::eval_node::visit_)
     );
 
-    register_method_handler<ast::Lexeme_String>(
-            static_cast<void (runtime::eval_node::*)(const ast::Lexeme_String &)>(&runtime::eval_node::visit_)
+    register_method_handler<ast::Literal_String>(
+            static_cast<void (runtime::eval_node::*)(const ast::Literal_String &)>(&runtime::eval_node::visit_)
     );
 
     register_method_handler<ast::Variable>(
@@ -236,7 +236,7 @@ runtime::eval_node::eval(const ast::Node &node)
 }
 
 inline void
-runtime::eval_node::visit_(const ast::Lexeme_Numeric &node)
+runtime::eval_node::visit_(const ast::Literal_Numeric &node)
 {
     auto result = owner_.get().get_ast_promotion().promote(node);
     if (result)
@@ -250,7 +250,7 @@ runtime::eval_node::visit_(const ast::Lexeme_Numeric &node)
 }
 
 inline void
-runtime::eval_node::visit_(const ast::Lexeme_String &node)
+runtime::eval_node::visit_(const ast::Literal_String &node)
 {
     auto result = owner_.get().get_ast_promotion().promote(node);
     if (result)
@@ -448,12 +448,12 @@ namespace kaleidoscope
 inline runtime::ast_promotion::ast_promotion(runtime &owner)
     : owner_(owner)
 {
-    register_method_handler<ast::Lexeme_Numeric>(
-            static_cast<void (runtime::ast_promotion::*)(const ast::Lexeme_Numeric &)>(&runtime::ast_promotion::visit_)
+    register_method_handler<ast::Literal_Numeric>(
+            static_cast<void (runtime::ast_promotion::*)(const ast::Literal_Numeric &)>(&runtime::ast_promotion::visit_)
     );
 
-    register_method_handler<ast::Lexeme_String>(
-            static_cast<void (runtime::ast_promotion::*)(const ast::Lexeme_String &)>(&runtime::ast_promotion::visit_)
+    register_method_handler<ast::Literal_String>(
+            static_cast<void (runtime::ast_promotion::*)(const ast::Literal_String &)>(&runtime::ast_promotion::visit_)
     );
 }
 
@@ -475,7 +475,7 @@ runtime::ast_promotion::promote(const ast::Node &node)
 }
 
 inline void
-runtime::ast_promotion::visit_(const ast::Lexeme_Numeric &node)
+runtime::ast_promotion::visit_(const ast::Literal_Numeric &node)
 {
     result_ = std::visit([](const auto &value) -> runtime::result
                          {
@@ -485,7 +485,7 @@ runtime::ast_promotion::visit_(const ast::Lexeme_Numeric &node)
 }
 
 inline void
-runtime::ast_promotion::visit_(const ast::Lexeme_String &node)
+runtime::ast_promotion::visit_(const ast::Literal_String &node)
 {
     result_ = node.value;
 }

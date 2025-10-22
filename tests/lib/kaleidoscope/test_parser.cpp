@@ -34,7 +34,7 @@ struct ast_to_string
     using Result = std::string;
 
     Result
-    operator()(const kaleidoscope::ast::Lexeme_Numeric &node) const
+    operator()(const kaleidoscope::ast::Literal_Numeric &node) const
     {
         return std::visit([](const auto &value) -> std::string
                           {
@@ -124,7 +124,7 @@ struct Ast_To_String : public Type_Switch_CRTP<Ast_To_String, std::string>
     }
 
     result_t
-    operator()(const kaleidoscope::ast::Lexeme_Numeric &node)
+    operator()(const kaleidoscope::ast::Literal_Numeric &node)
     {
         return std::visit([](const auto &value) -> std::string
                           {
@@ -240,8 +240,8 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     BOOST_TEST_MESSAGE(make_listing(result));
 
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
-    BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
-    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Lexeme_String)));
+    BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Literal_Numeric)));
+    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Literal_String)));
     BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Binary)));
     BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
 }
@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
     BOOST_TEST((6 == result.statements.size()));
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
-    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Lexeme_Numeric)));
+    BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Literal_Numeric)));
     BOOST_TEST_MESSAGE(compiler::demangle(typeid(*result.statements.at(2)).name()));
     BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Binary)));
 
@@ -284,17 +284,17 @@ BOOST_AUTO_TEST_CASE(anyany_check)
     kaleidoscope::ast::INodeRef any_ast = *result.statements.front();
 
     BOOST_TEST((any_ast.type_index() == std::type_index {typeid(*result.statements.front())}));
-    BOOST_TEST((any_ast.type_descriptor() == aa::descriptor_v<kaleidoscope::ast::Lexeme_Numeric>));
+    BOOST_TEST((any_ast.type_descriptor() == aa::descriptor_v<kaleidoscope::ast::Literal_Numeric>));
 
     ast_to_string visitor {};
 
     auto listing =
             aa::type_switch<std::optional<std::string>>(any_ast)
-                    .case_<const kaleidoscope::ast::Lexeme_Numeric &>(visitor)
+                    .case_<const kaleidoscope::ast::Literal_Numeric &>(visitor)
                     .default_(std::nullopt); // good
 
     auto stringify_visitor = aa::make_visit_invoke<std::string>(
-            [](ast_to_string &visitor, const kaleidoscope::ast::Lexeme_Numeric &node)
+            [](ast_to_string &visitor, const kaleidoscope::ast::Literal_Numeric &node)
             {
                 return visitor(node);
             }
