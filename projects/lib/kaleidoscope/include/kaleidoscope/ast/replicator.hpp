@@ -111,10 +111,10 @@ inline replicator::replicator(void)
             }
     );
 
-    register_handler<ast::Operation_Unary>(
-            [&](const ast::Operation_Unary &node)
+    register_handler<ast::Operation_Prefix>(
+            [&](const ast::Operation_Prefix &node)
             {
-                result_.reset(new ast::Operation_Unary(
+                result_.reset(new ast::Operation_Prefix(
                         node.op,
                         visit(*node.operand).result()
                 ));

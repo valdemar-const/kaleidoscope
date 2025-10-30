@@ -73,7 +73,7 @@ each<ast::Operation_Infix>(std::unique_ptr<ast::Operation_Infix> &node)
 
 template<>
 inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
-each<ast::Operation_Unary>(std::unique_ptr<ast::Operation_Unary> &node)
+each<ast::Operation_Prefix>(std::unique_ptr<ast::Operation_Prefix> &node)
 {
     return {std::ref(node->operand)};
 }

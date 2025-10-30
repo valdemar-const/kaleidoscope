@@ -268,8 +268,8 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
     BOOST_TEST_MESSAGE(compiler::demangle(typeid(*result.statements.at(2)).name()));
     BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Infix)));
 
-    BOOST_TEST((typeid(*result.statements.at(4)) == typeid(kaleidoscope::ast::Operation_Unary)));
-    BOOST_TEST((typeid(*result.statements.at(5)) == typeid(kaleidoscope::ast::Operation_Unary)));
+    BOOST_TEST((typeid(*result.statements.at(4)) == typeid(kaleidoscope::ast::Operation_Prefix)));
+    BOOST_TEST((typeid(*result.statements.at(5)) == typeid(kaleidoscope::ast::Operation_Prefix)));
 }
 
 BOOST_AUTO_TEST_CASE(anyany_check)

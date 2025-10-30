@@ -231,14 +231,14 @@ struct Functional_Call : public NodeCRTP<Functional_Call>
     Args   args;
 };
 
-struct Operation_Unary : public NodeCRTP<Operation_Unary>
+struct Operation_Prefix : public NodeCRTP<Operation_Prefix>
 {
     using Operator   = std::string;
     using Expression = std::unique_ptr<Node>;
 
-    ~Operation_Unary(void) override = default;
+    ~Operation_Prefix(void) override = default;
 
-    Operation_Unary(Operator op, Expression operand)
+    Operation_Prefix(Operator op, Expression operand)
         : op(op)
         , operand(std::move(operand))
     {

@@ -137,8 +137,8 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 }
         );
 
-        register_handler<ast::Operation_Unary>(
-                [&](const ast::Operation_Unary &obj)
+        register_handler<ast::Operation_Prefix>(
+                [&](const ast::Operation_Prefix &obj)
                 {
                     std::string result {
                             obj.op

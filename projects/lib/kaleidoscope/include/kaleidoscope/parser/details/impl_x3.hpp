@@ -79,7 +79,7 @@ const auto unary_expr_parsed = [](auto &ctx)
     auto &op   = at_c<0>(_attr(ctx));
     auto &expr = at_c<1>(_attr(ctx));
 
-    _val(ctx).reset(new ast::Operation_Unary(op, std::move(expr)));
+    _val(ctx).reset(new ast::Operation_Prefix(op, std::move(expr)));
 };
 
 const auto expr_next_parsed = [](auto &ctx)
@@ -96,7 +96,7 @@ const auto expr_next_parsed = [](auto &ctx)
                 std::accumulate(
                         ops.rbegin(), ops.rend() - 1, std::unique_ptr<ast::Node> {operand.release()}, [](auto acc, auto &&op)
                         {
-                            return std::unique_ptr<ast::Node>(new ast::Operation_Unary {op, std::move(acc)});
+                            return std::unique_ptr<ast::Node>(new ast::Operation_Prefix {op, std::move(acc)});
                         }
                 );
         _val(ctx) = std::move(std::make_pair(ops.front(), std::move(unary_expression)));
@@ -126,7 +126,7 @@ const auto expr_parsed = [](auto &ctx)
 
     if (maybe_op.has_value())
     {
-        first.reset(new ast::Operation_Unary {maybe_op.value(), std::move(expr)});
+        first.reset(new ast::Operation_Prefix {maybe_op.value(), std::move(expr)});
     }
     else
     {
