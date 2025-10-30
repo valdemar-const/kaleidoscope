@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
 {
     std::string input = R"KALEIDOSCOPE(
                     # this is a single line commentary
-                    def foo(a, b, c);                                      # function declaration
+                    function foo(a, b, c);                                      # function declaration
                     1;                                                     # numeric lexeme
                     "3";
                     1 - 2 - 3 ** 5 ** 6 - 4;                               # mathematical expression 1
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
                     g + -(7 + b) * -1;                                     # mathematical expression 1
                     a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f; # mathematical expression 1
                     # function definition
-                    def foo(a, b, c)
+                    function foo(a, b, c)
                         (a - b) * c;
                         a - b * c
                     end
