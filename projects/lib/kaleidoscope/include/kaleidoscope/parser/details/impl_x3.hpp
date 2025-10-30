@@ -210,28 +210,39 @@ mkkw(S &&kw)
     return x3::lexeme[x3::lit(std::string(kw)) >> !x3::alnum];
 }
 
+template<typename S>
+auto
+mkop(S &&op)
+{
+    return x3::lexeme[x3::lit(std::string(op)) >> !x3::alnum];
+}
+
+// keywords
+
 const auto kw_module    = mkkw("module");    // module definition
 const auto kw_export    = mkkw("export");    // export module section
-const auto kw_pub       = mkkw("doc");       // documentation block
-const auto kw_pub       = mkkw("spec");      // specification block
+const auto kw_doc       = mkkw("doc");       // documentation block
+const auto kw_spec      = mkkw("spec");      // specification block
 const auto kw_pub       = mkkw("pub");       // mark symbol public
-const auto kw_implement = mkkw("implement"); // module implementation
+const auto kw_implement = mkkw("implement"); // module/interface implementation
 const auto kw_interface = mkkw("interface"); // interface for dynamic dispatch (type erasure)
 const auto kw_import    = mkkw("import");    // module system
 const auto kw_from      = mkkw("from");      // module system
 const auto kw_type      = mkkw("type");      // type definition
-const auto kw_type      = mkkw("callable");  // callable semantic type
+const auto kw_enum      = mkkw("enum");      // tagged enumerators
+const auto kw_callable  = mkkw("callable");  // callable semantic type
 const auto kw_struct    = mkkw("struct");    // memory layout
 const auto kw_tuple     = mkkw("tuple");     // memory layout
 const auto kw_array     = mkkw("array");     // memory layout
 const auto kw_vector    = mkkw("vector");    // managed array
-const auto kw_range     = mkkw("range");     // range semantic
 const auto kw_any_of    = mkkw("any_of");    // tagged union memory layout
 const auto kw_any_with  = mkkw("any_with");  // polymorphic value type (erased)
+const auto kw_range     = mkkw("range");     // range semantic
 const auto kw_addr      = mkkw("addr");      // get object address operator
 const auto kw_optional  = mkkw("optional");  // optional value semantic
+const auto kw_ref       = mkkw("ref");       // borrowed reference
 const auto kw_ptr       = mkkw("ptr");       // pointer semantic
-const auto kw_ref       = mkkw("ref");       // shared managed value
+const auto kw_shared    = mkkw("shared");    // shared managed value
 const auto kw_owned     = mkkw("owned");     // unique managed value
 const auto kw_weak      = mkkw("weak");      // observable unmanaged value
 const auto kw_any       = mkkw("any_with");  // type erased configurable value type
@@ -241,7 +252,6 @@ const auto kw_mut       = mkkw("mut");       // allow value mutation
 const auto kw_operator  = mkkw("operator");  // operator definition
 const auto kw_literal   = mkkw("literal");   // custom lexeme suffixes
 const auto kw_function  = mkkw("function");  // function definition
-const auto kw_call      = mkkw("call");      // apply arguments to call
 const auto kw_apply     = mkkw("apply");     // destructured binding to callable arguments
 const auto kw_return    = mkkw("return");    // explicit return statement
 const auto kw_block     = mkkw("block");     // operator composition label system
@@ -257,18 +267,19 @@ const auto kw_match     = mkkw("match");     // match expression
 const auto kw_of        = mkkw("of");        // range expression
 const auto kw_nil       = mkkw("nil");       // none type literal
 
-const auto reserved =
-        kw_import | kw_from | kw_module | kw_pub
-        | kw_type | kw_struct | kw_tuple | kw_array | kw_range | kw_opt
-        | kw_addr
-        | kw_ptr | kw_ref | kw_owned | kw_weak
-        | kw_var | kw_let | kw_mut
-        | kw_operator | kw_literal | kw_function | kw_return
-        | kw_interface | kw_implement
-        | kw_block | kw_do | kw_end
-        | kw_loop | kw_repeat | kw_until | kw_while
-        | kw_for | kw_in
-        | kw_match | kw_of;
+// special operators
+
+const auto op_call              = mkop("()"); // a(b, c) -emit-> @call(a, tuple&(b, c))
+const auto op_subscript         = mkop("[]"); // indexing
+const auto op_symbol_resolution = mkop("::"); // symbol resolution
+const auto op_member_access     = mkop(".");  // value semantic field access
+const auto op_is_truly          = mkop("?");  // ask a thing if it truly or falsy
+const auto op_unsafe_unwrap     = mkop("!");  // force get underalying value or borrowed ref
+const auto op_safe_navigate     = mkop("?."); // safe navigate
+const auto op_navigate          = mkop("!."); // unsafe navigation
+const auto op_null_coalescing   = mkop("?:"); // if a - nullable number, a?:0 -> if (a?) a! else 0;
+const auto op_pipeline          = mkop("|>"); // chain call operator. a |> b(c) |> d -emit> d(b(a,c))
+const auto op_tap               = mkop("=>"); // tap to block
 
 const auto type_decl_def       = identifier[type_decl_parsed];
 const auto identifier_def      = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
