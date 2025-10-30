@@ -248,14 +248,14 @@ struct Operation_Unary : public NodeCRTP<Operation_Unary>
     Expression operand;
 };
 
-struct Operation_Binary : public NodeCRTP<Operation_Binary>
+struct Operation_Infix : public NodeCRTP<Operation_Infix>
 {
     using Operator   = std::string;
     using Expression = std::unique_ptr<Node>;
 
-    ~Operation_Binary(void) override = default;
+    ~Operation_Infix(void) override = default;
 
-    Operation_Binary(Operator op, Expression lhs, Expression rhs)
+    Operation_Infix(Operator op, Expression lhs, Expression rhs)
         : op(op)
         , lhs(std::move(lhs))
         , rhs(std::move(rhs))

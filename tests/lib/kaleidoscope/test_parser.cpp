@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Literal_Numeric)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Literal_String)));
-    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Binary)));
+    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Infix)));
     BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
 }
 
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Data_Object_Definition_List)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Literal_Numeric)));
     BOOST_TEST_MESSAGE(compiler::demangle(typeid(*result.statements.at(2)).name()));
-    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Binary)));
+    BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Infix)));
 
     BOOST_TEST((typeid(*result.statements.at(4)) == typeid(kaleidoscope::ast::Operation_Unary)));
     BOOST_TEST((typeid(*result.statements.at(5)) == typeid(kaleidoscope::ast::Operation_Unary)));

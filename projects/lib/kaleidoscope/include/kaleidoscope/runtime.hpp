@@ -156,7 +156,7 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     void visit_(const ast::Literal_String &node);
     void visit_(const ast::Variable &node);
     void visit_(const ast::Operation_Unary &node);
-    void visit_(const ast::Operation_Binary &node);
+    void visit_(const ast::Operation_Infix &node);
     void visit_(const ast::Functional_Call &node);
 
   protected:
@@ -209,8 +209,8 @@ inline runtime::eval_node::eval_node(runtime &owner)
             static_cast<void (runtime::eval_node::*)(const ast::Functional_Call &)>(&runtime::eval_node::visit_)
     );
 
-    register_method_handler<ast::Operation_Binary>(
-            static_cast<void (runtime::eval_node::*)(const ast::Operation_Binary &)>(&runtime::eval_node::visit_)
+    register_method_handler<ast::Operation_Infix>(
+            static_cast<void (runtime::eval_node::*)(const ast::Operation_Infix &)>(&runtime::eval_node::visit_)
     );
 
     register_method_handler<ast::Operation_Unary>(
@@ -302,7 +302,7 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
 }
 
 inline void
-runtime::eval_node::visit_(const ast::Operation_Binary &node)
+runtime::eval_node::visit_(const ast::Operation_Infix &node)
 {
     using namespace std::string_literals;
 

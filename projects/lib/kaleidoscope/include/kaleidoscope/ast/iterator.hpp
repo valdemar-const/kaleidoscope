@@ -66,7 +66,7 @@ each<ast::Functional_Call>(std::unique_ptr<ast::Functional_Call> &node)
 
 template<>
 inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
-each<ast::Operation_Binary>(std::unique_ptr<ast::Operation_Binary> &node)
+each<ast::Operation_Infix>(std::unique_ptr<ast::Operation_Infix> &node)
 {
     return {std::ref(node->lhs), std::ref(node->rhs)};
 }

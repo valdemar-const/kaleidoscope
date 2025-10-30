@@ -244,7 +244,7 @@ precedence::pop_to_result(Output &from)
         std::unique_ptr<ast::Node> rhs {converted_.back().release()};
         converted_.pop_back();
 
-        converted_.emplace_back(std::make_unique<ast::Operation_Binary>(*op, std::move(lhs), std::move(rhs)));
+        converted_.emplace_back(std::make_unique<ast::Operation_Infix>(*op, std::move(lhs), std::move(rhs)));
     }
     else if (auto operand = *std::get_if<ast::Node *>(&top))
     {

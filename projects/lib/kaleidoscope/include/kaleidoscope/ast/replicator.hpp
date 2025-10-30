@@ -121,10 +121,10 @@ inline replicator::replicator(void)
             }
     );
 
-    register_handler<ast::Operation_Binary>(
-            [&](const ast::Operation_Binary &node)
+    register_handler<ast::Operation_Infix>(
+            [&](const ast::Operation_Infix &node)
             {
-                result_.reset(new ast::Operation_Binary(
+                result_.reset(new ast::Operation_Infix(
                         node.op,
                         visit(*node.lhs).result(),
                         visit(*node.rhs).result()

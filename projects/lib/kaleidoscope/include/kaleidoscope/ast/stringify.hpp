@@ -149,8 +149,8 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 }
         );
 
-        register_handler<ast::Operation_Binary>(
-                [&](const ast::Operation_Binary &obj)
+        register_handler<ast::Operation_Infix>(
+                [&](const ast::Operation_Infix &obj)
                 {
                     std::string result {
                             obj.op
