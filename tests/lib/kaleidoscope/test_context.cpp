@@ -75,7 +75,7 @@ struct F
         context.bind_op(
                 "+",
                 Module::Operator {
-                        {.kind = Kind::Unary, .associativity = Associativity::Left, .precedence = 20},
+                        {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -95,7 +95,7 @@ struct F
         context.bind_op(
                 "-",
                 Module::Operator {
-                        {.kind = Kind::Unary, .associativity = Associativity::Left, .precedence = 20},
+                        {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -115,7 +115,7 @@ struct F
         context.bind_op(
                 "!",
                 Module::Operator {
-                        {.kind = Kind::Unary, .associativity = Associativity::Left, .precedence = 20},
+                        {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -142,7 +142,7 @@ struct F
         context.bind_op(
                 "*",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 30},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -163,7 +163,7 @@ struct F
         context.bind_op(
                 "/",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 30},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -184,7 +184,7 @@ struct F
         context.bind_op(
                 "%",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 30},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -209,7 +209,7 @@ struct F
         context.bind_op(
                 "+",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 40},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -230,7 +230,7 @@ struct F
         context.bind_op(
                 "-",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 40},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -253,7 +253,7 @@ struct F
         context.bind_op(
                 ">",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -274,7 +274,7 @@ struct F
         context.bind_op(
                 ">=",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -295,7 +295,7 @@ struct F
         context.bind_op(
                 "<",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -316,7 +316,7 @@ struct F
         context.bind_op(
                 "<=",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 60},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -337,7 +337,7 @@ struct F
         context.bind_op(
                 "==",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 70},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -358,7 +358,7 @@ struct F
         context.bind_op(
                 "!=",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 70},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -383,7 +383,7 @@ struct F
         context.bind_op(
                 "&&",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 110},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 110},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;
@@ -404,7 +404,7 @@ struct F
         context.bind_op(
                 "||",
                 Module::Operator {
-                        {.kind = Kind::Binary, .associativity = Associativity::Left, .precedence = 120},
+                        {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 120},
                         [](std::vector<std::any> args) -> std::any
                         {
                             using Result = runtime::result;

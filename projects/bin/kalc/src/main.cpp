@@ -25,7 +25,7 @@ main(int argc, const char *argv[])
             std::make_pair(
                     "**",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Right,
                             .precedence    = 0
                     }
@@ -33,7 +33,7 @@ main(int argc, const char *argv[])
             std::make_pair(
                     "*",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 10
                     }
@@ -41,7 +41,7 @@ main(int argc, const char *argv[])
             std::make_pair(
                     "/",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 10
                     }
@@ -49,7 +49,7 @@ main(int argc, const char *argv[])
             std::make_pair(
                     "+",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 20
                     }
@@ -57,7 +57,7 @@ main(int argc, const char *argv[])
             std::make_pair(
                     "-",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 20
                     }

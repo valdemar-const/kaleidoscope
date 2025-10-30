@@ -42,11 +42,12 @@ struct Module
 
         enum class Kind : uint8_t
         {
-            Unary,
-            Binary
+            Postfix,
+            Prefix,
+            Infix
         };
 
-        Kind          kind          = Kind::Binary;
+        Kind          kind          = Kind::Infix;
         Associativity associativity = Associativity::Left;
         Precedence    precedence    = 0; /**< lesser is higher */
     };
@@ -402,11 +403,11 @@ struct Module
     Module &
     bind_op(std::string name, Operator value)
     {
-        if (operator_properties::Kind::Binary == value.props().kind)
+        if (operator_properties::Kind::Infix == value.props().kind)
         {
             binary_ops.emplace(name, value);
         }
-        else // if (operator_properties::Kind::Unary == value.props().kind)
+        else // if (operator_properties::Kind::Prefix == value.props().kind)
         {
             unary_ops.emplace(name, value);
         }
@@ -420,6 +421,7 @@ struct Module
         identifiers.clear();
         unary_ops.clear();
         binary_ops.clear();
+        linked.clear();
     }
 
   protected:

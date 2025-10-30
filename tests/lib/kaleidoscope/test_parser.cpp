@@ -171,7 +171,7 @@ struct F
             std::make_pair(
                     "**",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Right,
                             .precedence    = 0
                     }
@@ -179,7 +179,7 @@ struct F
             std::make_pair(
                     "*",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 10
                     }
@@ -187,7 +187,7 @@ struct F
             std::make_pair(
                     "/",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 10
                     }
@@ -195,7 +195,7 @@ struct F
             std::make_pair(
                     "+",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 20
                     }
@@ -203,7 +203,7 @@ struct F
             std::make_pair(
                     "-",
                     kaleidoscope::state::operator_properties {
-                            .kind          = Kind::Binary,
+                            .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 20
                     }
