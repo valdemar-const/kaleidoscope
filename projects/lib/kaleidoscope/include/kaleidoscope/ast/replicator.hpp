@@ -111,6 +111,16 @@ inline replicator::replicator(void)
             }
     );
 
+    register_handler<ast::Operation_Postfix>(
+            [&](const ast::Operation_Postfix &node)
+            {
+                result_.reset(new ast::Operation_Postfix(
+                        node.op,
+                        visit(*node.operand).result()
+                ));
+            }
+    );
+
     register_handler<ast::Operation_Prefix>(
             [&](const ast::Operation_Prefix &node)
             {

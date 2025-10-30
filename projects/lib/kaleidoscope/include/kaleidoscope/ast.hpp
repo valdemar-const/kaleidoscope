@@ -231,6 +231,23 @@ struct Functional_Call : public NodeCRTP<Functional_Call>
     Args   args;
 };
 
+struct Operation_Postfix : public NodeCRTP<Operation_Postfix>
+{
+    using Operator   = std::string;
+    using Expression = std::unique_ptr<Node>;
+
+    ~Operation_Postfix(void) override = default;
+
+    Operation_Postfix(Operator op, Expression operand)
+        : op(op)
+        , operand(std::move(operand))
+    {
+    }
+
+    Operator   op;
+    Expression operand;
+};
+
 struct Operation_Prefix : public NodeCRTP<Operation_Prefix>
 {
     using Operator   = std::string;

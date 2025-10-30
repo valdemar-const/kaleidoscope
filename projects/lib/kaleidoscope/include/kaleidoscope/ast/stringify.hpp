@@ -137,6 +137,18 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                 }
         );
 
+        register_handler<ast::Operation_Postfix>(
+                [&](const ast::Operation_Postfix &obj)
+                {
+                    std::string result {
+                            "(postfix " + obj.op + ")"
+                            + " " + std::string(this->visit(*obj.operand).result())
+                    };
+
+                    value = "(" + result + ")";
+                }
+        );
+
         register_handler<ast::Operation_Prefix>(
                 [&](const ast::Operation_Prefix &obj)
                 {

@@ -80,6 +80,13 @@ each<ast::Operation_Prefix>(std::unique_ptr<ast::Operation_Prefix> &node)
 
 template<>
 inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
+each<ast::Operation_Postfix>(std::unique_ptr<ast::Operation_Postfix> &node)
+{
+    return {std::ref(node->operand)};
+}
+
+template<>
+inline std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>
 each<ast::Precedence_Agnostic_Expr>(std::unique_ptr<ast::Precedence_Agnostic_Expr> &node)
 {
     using Result = std::vector<std::reference_wrapper<std::unique_ptr<ast::Node>>>;
