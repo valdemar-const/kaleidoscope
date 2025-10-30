@@ -93,7 +93,7 @@ struct runtime
         }
 
         template<typename T>
-        bool operator==(const T &rhs);
+        bool operator==(T &&rhs);
 
         operator bool(void) const
         {
@@ -488,6 +488,14 @@ inline void
 runtime::ast_promotion::visit_(const ast::Literal_String &node)
 {
     result_ = node.value;
+}
+
+template<typename T>
+bool runtime::result::operator==(T&& rhs)
+{
+    using Value = std::decay_t<T>;
+    Value *lhs = *this;
+    return (lhs) ? *lhs == std::forward<T>(rhs) : false;
 }
 
 } // namespace kaleidoscope

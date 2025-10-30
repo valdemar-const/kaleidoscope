@@ -204,23 +204,3 @@ struct state
     mutable Cache_Ast ast_cache_;
 };
 } // namespace kaleidoscope
-
-template<typename T>
-inline bool
-operator==(const kaleidoscope::state::result &lhs, const T &rhs);
-
-template<>
-inline bool // clang-format off
-kaleidoscope::state::result::operator==<double>(const double &rhs) // clang-format on
-{
-    double a = *this;
-    return a == rhs;
-}
-
-template<>
-inline bool // clang-format off
-kaleidoscope::state::result::operator==<int>(const int &rhs) // clang-format on
-{
-    int a = *this;
-    return a == rhs;
-}
