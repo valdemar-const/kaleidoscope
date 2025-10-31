@@ -155,6 +155,7 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     void visit_(const ast::Literal_Numeric &node);
     void visit_(const ast::Literal_String &node);
     void visit_(const ast::Variable &node);
+    void visit_(const ast::Operation_Postfix &node);
     void visit_(const ast::Operation_Prefix &node);
     void visit_(const ast::Operation_Infix &node);
     void visit_(const ast::Functional_Call &node);
@@ -211,6 +212,10 @@ inline runtime::eval_node::eval_node(runtime &owner)
 
     register_method_handler<ast::Operation_Infix>(
             static_cast<void (runtime::eval_node::*)(const ast::Operation_Infix &)>(&runtime::eval_node::visit_)
+    );
+
+    register_method_handler<ast::Operation_Postfix>(
+            static_cast<void (runtime::eval_node::*)(const ast::Operation_Postfix &)>(&runtime::eval_node::visit_)
     );
 
     register_method_handler<ast::Operation_Prefix>(
@@ -315,6 +320,23 @@ runtime::eval_node::visit_(const ast::Operation_Infix &node)
     std::vector<std::any> args;
     args.emplace_back(eval(*node.lhs));
     args.emplace_back(eval(*node.rhs));
+
+    result_ = std::any_cast<double>(func(std::move(args)));
+}
+
+inline void
+runtime::eval_node::visit_(const ast::Operation_Postfix &node)
+{
+    using namespace std::string_literals;
+
+    auto func = owner_.get().scope().get_unop(node.op);
+    if (!func)
+    {
+        throw std::runtime_error("unknown unary operator: "s + node.op);
+    }
+
+    std::vector<std::any> args;
+    args.emplace_back(eval(*node.operand));
 
     result_ = std::any_cast<double>(func(std::move(args)));
 }
@@ -491,10 +513,11 @@ runtime::ast_promotion::visit_(const ast::Literal_String &node)
 }
 
 template<typename T>
-bool runtime::result::operator==(T&& rhs)
+bool
+runtime::result::operator==(T &&rhs)
 {
     using Value = std::decay_t<T>;
-    Value *lhs = *this;
+    Value *lhs  = *this;
     return (lhs) ? *lhs == std::forward<T>(rhs) : false;
 }
 

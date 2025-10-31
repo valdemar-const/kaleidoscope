@@ -215,6 +215,81 @@ struct F
 
 BOOST_FIXTURE_TEST_SUITE(s, F)
 
+BOOST_AUTO_TEST_CASE(parse_atom)
+{
+    std::string input = R"KALEIDOSCOPE(
+                    1
+                )KALEIDOSCOPE"s;
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    preprocess(result);
+
+    BOOST_TEST((result.statements.size() == 1));
+    BOOST_TEST_MESSAGE(make_listing(result));
+
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Literal_Numeric)));
+}
+
+BOOST_AUTO_TEST_CASE(parse_prefix_op)
+{
+    std::string input = R"KALEIDOSCOPE(
+                    !1
+                )KALEIDOSCOPE"s;
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    preprocess(result);
+
+    BOOST_TEST((result.statements.size() == 1));
+    BOOST_TEST_MESSAGE(make_listing(result));
+
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Operation_Prefix)));
+}
+
+BOOST_AUTO_TEST_CASE(parse_postfix_op)
+{
+    std::string input = R"KALEIDOSCOPE(
+                    1!
+                )KALEIDOSCOPE"s;
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    preprocess(result);
+
+    BOOST_TEST((result.statements.size() == 1));
+    BOOST_TEST_MESSAGE(make_listing(result));
+
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Operation_Postfix)));
+}
+
+BOOST_AUTO_TEST_CASE(parse_postfix_prefix)
+{
+    std::string input = R"KALEIDOSCOPE(
+                    !1!
+                )KALEIDOSCOPE"s;
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    preprocess(result);
+
+    BOOST_TEST((result.statements.size() == 1));
+    BOOST_TEST_MESSAGE(make_listing(result));
+
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Operation_Prefix)));
+}
+
+BOOST_AUTO_TEST_CASE(parse_infix_prefix)
+{
+    std::string input = R"KALEIDOSCOPE(
+                    !(1 + 2);
+                )KALEIDOSCOPE"s;
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    BOOST_TEST_MESSAGE(make_listing(result));
+    preprocess(result);
+    BOOST_TEST_MESSAGE(make_listing(result));
+    BOOST_TEST((result.statements.size() == 1));
+
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Operation_Infix)));
+}
+
 BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
 {
     std::string input = R"KALEIDOSCOPE(
@@ -252,7 +327,7 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
                 var num, num2 : int; # mutable
                 let num_: int; # immutable
                 1;
-                1 + - -1;
+                1 + -1;
                 !1;
                 !0;
             )KALEIDOSCOPE"s; // num: 0 - by default

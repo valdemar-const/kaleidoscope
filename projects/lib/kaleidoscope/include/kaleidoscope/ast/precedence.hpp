@@ -36,6 +36,7 @@ struct precedence : ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast:
   protected:
 
     void visit_(const ast::Operation_Prefix &ast);
+    void visit_(const ast::Operation_Postfix &ast);
     void visit_(const ast::Function_Defenition &ast);
     void visit_(const ast::Functional_Call &ast);
     void visit_(const ast::Precedence_Agnostic_Expr &ast);
@@ -62,6 +63,9 @@ inline precedence::precedence(const Bin_Op_Precedence &precedence)
 {
     using namespace std::placeholders;
 
+    register_method_handler<ast::Operation_Postfix>(
+            static_cast<void (precedence::*)(const ast::Operation_Postfix &)>(&precedence::visit_)
+    );
     register_method_handler<ast::Operation_Prefix>(
             static_cast<void (precedence::*)(const ast::Operation_Prefix &)>(&precedence::visit_)
     );
@@ -110,6 +114,20 @@ precedence::result(void)
         converted_.pop_back();
         return tmp;
     }
+}
+
+inline void
+precedence::visit_(const ast::Operation_Postfix &ast)
+{
+    if (typeid(*ast.operand) == typeid(ast::Precedence_Agnostic_Expr))
+    {
+        const_cast<ast::Operation_Prefix::Expression &>(ast.operand).reset(visit(*ast.operand).result().release());
+    }
+    else
+    {
+        // do nothing
+    }
+    visit(*ast.operand);
 }
 
 inline void

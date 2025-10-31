@@ -74,7 +74,15 @@ const auto fun_call_parsed = [](auto &ctx)
     _val(ctx).reset(new ast::Functional_Call(at_c<0>(_attr(ctx)), std::move(at_c<1>(_attr(ctx)))));
 };
 
-const auto unary_expr_parsed = [](auto &ctx)
+const auto postfix_expr_parsed = [](auto &ctx)
+{
+    auto &expr = at_c<0>(_attr(ctx));
+    auto &op   = at_c<1>(_attr(ctx));
+
+    _val(ctx).reset(new ast::Operation_Postfix(op, std::move(expr)));
+};
+
+const auto prefix_expr_parsed = [](auto &ctx)
 {
     auto &op   = at_c<0>(_attr(ctx));
     auto &expr = at_c<1>(_attr(ctx));
@@ -84,13 +92,14 @@ const auto unary_expr_parsed = [](auto &ctx)
 
 const auto expr_next_parsed = [](auto &ctx)
 {
+#if 1
     auto &ops     = at_c<0>(_attr(ctx));
     auto &operand = at_c<1>(_attr(ctx));
     if (ops.size() == 1)
     {
         _val(ctx) = std::move(std::make_pair(ops.front(), std::move(operand)));
     }
-    else if (ops.size() > 1)
+    else if (ops.size() == 2)
     {
         auto unary_expression =
                 std::accumulate(
@@ -104,7 +113,13 @@ const auto expr_next_parsed = [](auto &ctx)
     else
     {
         // do nothing
+        _pass(ctx) = false;
     }
+#else
+    auto &op      = at_c<0>(_attr(ctx));
+    auto &operand = at_c<1>(_attr(ctx));
+    _val(ctx)     = std::move(std::make_pair(op, std::move(operand)));
+#endif
 };
 
 const auto expr_parsed = [](auto &ctx)
@@ -302,18 +317,25 @@ const auto atom_def =
          | string)[variant_node_upcast];
 
 const auto simple_def =
-        (atom
+        (number
+         | string
          | fun_call
          | variable
          | (x3::lit('(') >> expr >> ')'))[variant_node_upcast];
 
-const auto postfix_expr_def = (simple >> ops); // TODO: implement
-const auto prefix_expr_def =
-        (ops >> postfix_expr)[unary_expr_parsed]
-        | simple; // TODO: implement
+const auto postfix_expr_def =
+        (x3::lexeme[simple >> op])[postfix_expr_parsed]
+        | simple[node_upcast];
 
-const auto expr_next_def = (ops >> simple)[expr_next_parsed];
-const auto expr_def      = (simple >> *(expr_next))[expr_parsed];
+const auto prefix_expr_def =
+        (x3::lexeme[op >> postfix_expr])[prefix_expr_parsed]
+        | postfix_expr[node_upcast]
+        | (x3::lexeme[op >> postfix_expr])[prefix_expr_parsed]
+        | simple[node_upcast];
+
+// Бинарные выражения
+const auto expr_next_def = (ops >> postfix_expr)[expr_next_parsed];
+const auto expr_def      = (prefix_expr >> *(expr_next))[expr_parsed];
 const auto expr_list_def = (expr[emplace_to_vec] % ',');
 
 const auto stmt_def      = (fun_def | fun_decl | var_def | expr)[variant_node_upcast];
@@ -330,8 +352,8 @@ BOOST_SPIRIT_DEFINE(
         fun_block,
         fun_def,
         expr,
-        prefix_expr,
         postfix_expr,
+        prefix_expr,
         expr_next,
         expr_list,
         atom,
