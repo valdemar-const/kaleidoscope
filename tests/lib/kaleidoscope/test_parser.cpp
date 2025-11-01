@@ -278,6 +278,7 @@ BOOST_AUTO_TEST_CASE(parse_postfix_prefix)
 BOOST_AUTO_TEST_CASE(parse_infix_prefix)
 {
     std::string input = R"KALEIDOSCOPE(
+                    ! (1 + 2);
                     !(1 + 2);
                 )KALEIDOSCOPE"s;
 

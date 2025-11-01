@@ -24,6 +24,8 @@ Parser::parse(T begin, T end)
             )
             && (begin == end);
 
+    std::string_view least {begin, end};
+
     return Parser::Result(std::move(out));
 }
 

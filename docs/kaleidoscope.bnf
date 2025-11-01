@@ -1,0 +1,33 @@
+<chunk>                   ::= <spacing> <statement_list> <spacing>
+<statement_list>          ::= <statement> <statement_list_continue>
+<statement_list_continue> ::= (";" <statement>)*
+
+
+<statement>               ::= <expr> | <stmt_empty>
+<stmt_empty>              ::= <spacing>
+
+
+<expr>                    ::= <term> <expr_continue>
+<expr_continue>           ::= (<space> <infix_op> <space> <term>)*
+<term>                    ::= <unary_prefix>
+<unary_prefix>            ::= <op> <unary_postfix> | <unary_postfix>
+<unary_postfix>           ::= <factor> <op>?
+<infix_op>                ::= <op>
+<op>                      ::= ("+" | "-" | "*" | "!")+
+<factor>                  ::= <spacing> (<number> | <identifier> |  "(" <spacing> <expr> <spacing> ")") <spacing>
+
+
+<identifier>              ::= ("_" | [a-z] | [A-Z]) ("_" | [0-9] | [a-z] | [A-Z])*
+<number>                  ::= ([1-9]+ ("." [0-9]+)?)+
+
+
+<spacing>                 ::= <space>?
+<space>                   ::= (" " | <newline>)+
+<indent_half>             ::= "  "
+<indent>                  ::= <indent_half> <indent_half>
+
+<comment_line>            ::= "#" <all_sym>* <newline>?
+
+/* "\n" == "\0A", "\r" == "\0D" */
+<newline>                 ::= "\n" | "\r" "\n"
+<all_sym>                 ::= "☺" | "☻" | "♥" | "♦" | "♣" | "♠" | "►" | "◄" | "↕" | "‼" | "¶" | "§" | "▬" | "↨" | "↑" | "↓" | "→" | "∟" | "↔" | "▲" | "▼" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | ":" | ";" | "<" | "=" | ">" | "?" | "@" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" | "[" | "\" | "]" | "^" | "_" | "`" | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "{" | "|" | "}" | "~" | "¡" | "¢" | "£" | "¤" | "¥" | "¦" | "§" | "¨" | "©" | "ª" | "«" | "¬" | "­" | "®" | "¯" | "°" | "±" | "²" | "³" | "´" | "µ" | "¶" | "·" | "¸" | "¹" | "º" | "»" | "¼" | "½" | "¾" | "¿" | "À" | "Á" | "Â" | "Ã" | "Ä" | "Å" | "Æ" | "Ç" | "È" | "É" | "Ê" | "Ë" | "Ì" | "Í" | "Î" | "Ï" | "Ð" | "Ñ" | "Ò" | "Ó" | "Ô" | "Õ" | "Ö" | "×" | "Ø" | "Ù" | "Ú" | "Û" | "Ü" | "Ý" | "Þ" | "ß" | "à" | "á" | "â" | "ã" | "ä" | "å" | "æ" | "ç" | "è" | "é" | "ê" | "ë" | "ì" | "í" | "î" | "ï" | "ð" | "ñ" | "ò" | "ó" | "ô" | "õ" | "ö" | "÷" | "ø" | "ù" | "ú" | "û" | "ü" | "ý" | "þ"
