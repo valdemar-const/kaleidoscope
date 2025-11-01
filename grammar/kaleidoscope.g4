@@ -1,83 +1,129 @@
 grammar kaleidoscope;
 
-/* ------------------------------------------------------------------ */
-
-program
-    : statement_list SEMI? EOF
+chunk
+    : stmt_list EOF
     ;
 
-statement_list
-    : stmt stmt_continue
+stmt_list
+    : stmt stmt_continue ';'?
     ;
 
 stmt_continue
-    : (SEMI stmt)*
+    : (';' stmt)*
     ;
 
 stmt
-    : function_decl
-    | expression
+    : fn_decl
+    | expr
+    |
     ;
 
-// Правила парсера с приоритетами
-expression
+/* ------------------------------------------------------------------ */
+
+fn_decl
+    : FN ID '(' param_list ')' ':' ID fn_decl_continue
+    ;
+
+param_list
+    : param param_list_continue
+    |
+    ;
+
+param_list_continue
+    : (',' param)*
+    ;
+
+param
+    : ID type_expr
+    ;
+
+type_expr
+    : ':' ID
+    |
+    ;
+
+fn_decl_continue
+    : fn_block?
+    ;
+
+fn_block
+    : fn_body
+    ;
+
+fn_body
+    : BLOCK_START (fn_stmt_list) BLOCK_END
+    ;
+
+fn_stmt_list
+    : fn_stmt (';' fn_stmt)* ';'?
+    ;
+
+fn_stmt
+    : ret_stmt
+    | stmt
+    |
+    ;
+
+ret_stmt
+    : RET expr
+    ;
+
+/* ------------------------------------------------------------------ */
+
+expr
     : term expr_continue
     ;
 
 expr_continue
-    : (infix_op term)*
+    : (INFIX_OP term)*
     ;
 
-infix_op : INFIX_OP;
-
-term : prefix_expression;
-
-// Префиксные (средний приоритет)
-prefix_expression
-    : PREFIX_OP postfix_expression
-    | postfix_expression
+term
+    : expr_prefix
     ;
 
-// Постфиксные (высший приоритет)
-postfix_expression
-    : primary_expression POSTFIX_OP?
+expr_prefix
+    : (OP? expr_postfix)
     ;
 
-primary_expression
-    : identifier
-    | number
-    | LPAREN expression RPAREN
+expr_postfix
+    : expr_primary OP?
     ;
 
-identifier : IDENTIFIER;
-number     : NUMBER;
-
-function_decl
-    : FUNCTION IDENTIFIER LPAREN RPAREN (COLON IDENTIFIER)?
+expr_primary
+    : NUMBER
+    | expr_call
+    | ID
+    | '(' expr ')'
     ;
 
-/* ------------------------------------------------------------------ */
+expr_call
+    : ID '(' arg_list ')'
+    ;
 
-// Комментарии должны быть ВЫШЕ операторов!
-// SINGLE_LINE_COMMENT : '#' ~[\r\n]* -> skip;
-WS                  : [ \t\r\n]+ -> skip;
+arg_list
+    : expr arg_list_continue
+    |
+    ;
 
-// Ключевые слова
-FUNCTION   : 'function';
-DISCARD    : 'discard';
+arg_list_continue
+    : (',' expr)*
+    ;
 
-// Символы
-LPAREN     : '(';
-RPAREN     : ')';
-COLON      : ':';
-EQUALS     : '=';
-SEMI       : ';';
+/* ================================================================== */
 
-// Разные типы операторов - ИСКЛЮЧАЕМ '#' из операторов!
-OP         : [-+]+;  // убрали '#' из списка
-PREFIX_OP  : OP;
-POSTFIX_OP : OP;
-INFIX_OP   : OP;
+FN          : 'function';
+BLOCK_START : 'do';
+BLOCK_END   : 'end';
+RET         : 'return';
 
-NUMBER     : [0-9]+;
-IDENTIFIER : [_a-zA-Z][a-zA-Z_0-9]*;
+ID       : [_a-zA-Z][_0-9a-zA-Z]*;
+INFIX_OP : [ \t\n\r]OP[ \t\n\r];
+OP       : [-*/%&^$@!~`'+]+;
+NUMBER   : [0-9];
+
+WS: [ \t\n\r] -> skip;
+
+//NEWLINE: '\r'? '\n';
+//IDENT_HALF: NEWLINE '  ';
+//IDENT: IDENT_HALF '  ';
