@@ -27,7 +27,7 @@ stmt_single
 /* ------------------------------------------------------------------ */
 
 fn_decl
-    : FN ID '(' param_list? ')' type_expr?
+    : FN ID ('(' param_list? ')')? type_expr?
     ;
 
 fn_def
