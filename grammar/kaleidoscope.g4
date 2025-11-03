@@ -122,7 +122,8 @@ INFIX_OP : [ \t\n\r]OP[ \t\n\r];
 OP       : [-*/%&^$@!~`'+]+;
 NUMBER   : [0-9];
 
-WS: [ \t\n\r] -> skip;
+COMMENT : '#' ~[\n\r]* -> skip;
+WS      : [ \t\n\r] -> skip;
 
 //NEWLINE: '\r'? '\n';
 //IDENT_HALF: NEWLINE '  ';
