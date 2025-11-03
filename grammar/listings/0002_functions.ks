@@ -6,5 +6,5 @@ function foo(a: i32, b: i8, c: f64): baz do
 end;
 
 function main(): void do
-    hello();
+    foo();
 end

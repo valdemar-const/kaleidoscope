@@ -5,11 +5,7 @@ chunk
     ;
 
 stmt_list
-    : stmt stmt_continue ';'?
-    ;
-
-stmt_continue
-    : (';' stmt)*
+    : stmt (';' stmt)* ';'?
     ;
 
 stmt
@@ -21,29 +17,19 @@ stmt
 /* ------------------------------------------------------------------ */
 
 fn_decl
-    : FN ID '(' param_list ')' ':' ID fn_decl_continue
+    : FN ID '(' param_list? ')' ':' ID fn_block?
     ;
 
 param_list
-    : param param_list_continue
-    |
-    ;
-
-param_list_continue
-    : (',' param)*
+    : param (',' param)*
     ;
 
 param
-    : ID type_expr
+    : ID type_expr?
     ;
 
 type_expr
     : ':' ID
-    |
-    ;
-
-fn_decl_continue
-    : fn_block?
     ;
 
 fn_block
@@ -71,11 +57,7 @@ ret_stmt
 /* ------------------------------------------------------------------ */
 
 expr
-    : term expr_continue
-    ;
-
-expr_continue
-    : (INFIX_OP term)*
+    : term (INFIX_OP term)*
     ;
 
 term
@@ -98,16 +80,11 @@ expr_primary
     ;
 
 expr_call
-    : ID '(' arg_list ')'
+    : ID '(' arg_list? ')'
     ;
 
 arg_list
-    : expr arg_list_continue
-    |
-    ;
-
-arg_list_continue
-    : (',' expr)*
+    : expr (',' expr)*
     ;
 
 /* ================================================================== */
