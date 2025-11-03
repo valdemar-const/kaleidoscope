@@ -1,14 +1,24 @@
 grammar kaleidoscope;
 
 chunk
-    : stmt_list EOF
+    : (stmt_single | stmt_block) EOF
+    | stmt_list EOF
     ;
 
 stmt_list
-    : stmt (';' stmt)* ';'?
+    : stmt+
     ;
 
 stmt
+    : stmt_single ';'
+    | stmt_block
+    ;
+
+stmt_block
+    : fn_def
+    ;
+
+stmt_single
     : fn_decl
     | expr
     |
@@ -17,7 +27,11 @@ stmt
 /* ------------------------------------------------------------------ */
 
 fn_decl
-    : FN ID '(' param_list? ')' ':' ID fn_block?
+    : FN ID '(' param_list? ')' type_expr?
+    ;
+
+fn_def
+    : fn_decl fn_block
     ;
 
 param_list
@@ -46,8 +60,7 @@ fn_stmt_list
 
 fn_stmt
     : ret_stmt
-    | stmt
-    |
+    | stmt_single
     ;
 
 ret_stmt
@@ -102,6 +115,3 @@ NUMBER   : [0-9];
 COMMENT : '#' ~[\n\r]* -> skip;
 WS      : [ \t\n\r] -> skip;
 
-//NEWLINE: '\r'? '\n';
-//IDENT_HALF: NEWLINE '  ';
-//IDENT: IDENT_HALF '  ';
