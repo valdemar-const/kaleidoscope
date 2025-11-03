@@ -15,11 +15,13 @@ stmt
     ;
 
 stmt_block
-    : fn_def
+    : type_def
+    | fn_def
     ;
 
 stmt_single
-    : fn_decl
+    : type_decl
+    | fn_decl
     | expr
     |
     ;
@@ -27,7 +29,7 @@ stmt_single
 /* ------------------------------------------------------------------ */
 
 fn_decl
-    : FN ID ('(' param_list? ')')? type_expr?
+    : FN ID ('(' param_list? ')')? type_res?
     ;
 
 fn_def
@@ -39,10 +41,10 @@ param_list
     ;
 
 param
-    : ID type_expr?
+    : ID type_res?
     ;
 
-type_expr
+type_res
     : ':' ID
     ;
 
@@ -65,6 +67,22 @@ fn_stmt
 
 ret_stmt
     : RET expr
+    ;
+
+/* ------------------------------------------------------------------ */
+
+type_decl
+    : TYPE typename
+    ;
+
+typename : ID;
+
+type_def
+    : TYPE ID '=' type_expr
+    ;
+
+type_expr
+    : ID
     ;
 
 /* ------------------------------------------------------------------ */
@@ -102,6 +120,7 @@ arg_list
 
 /* ================================================================== */
 
+TYPE        : 'type';
 FN          : 'function';
 BLOCK_START : 'do';
 BLOCK_END   : 'end';
@@ -114,4 +133,3 @@ NUMBER   : [0-9];
 
 COMMENT : '#' ~[\n\r]* -> skip;
 WS      : [ \t\n\r] -> skip;
-
