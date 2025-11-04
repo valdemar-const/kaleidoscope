@@ -13,6 +13,6 @@ function foo(a: i32, b: i8, c: f64): baz do
     return a + b + c;
 end
 
-function main() do
+function main do
     return foo(a, b, c);
 end
