@@ -497,4 +497,12 @@ BOOST_AUTO_TEST_CASE(eval_operators)
     BOOST_TEST((ctx.eval("1 + 1") == 2.0));
 }
 
+BOOST_AUTO_TEST_CASE(function_dispatch)
+{
+    ctx.bind_func("foo", [](int32_t value) -> int32_t
+                  {
+                      return value * value;
+                  });
+}
+
 BOOST_AUTO_TEST_SUITE_END()

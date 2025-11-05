@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include <boost/uuid.hpp>
+#include <boost/callable_traits.hpp>
 
 #include <cinttypes>
 #include <cstddef>
@@ -252,11 +253,75 @@ namespace traits
                              && std::is_scalar_v<T>
                              && !std::is_pointer_v<T>
                              && !std::is_array_v<T>;
+
+    template<typename T>
+    concept Type_Callable = std::is_invocable_v<T>;
+
 } // namespace traits
 } // namespace kaleidoscope
 
 namespace kaleidoscope::type
 {
+
+struct Descriptor
+{
+    virtual ~Descriptor(void) = default;
+
+    virtual std::optional<std::string_view>
+    type_name(void) const
+    {
+        return type_name_;
+    }
+
+  protected:
+
+    std::optional<std::string_view> type_name_;
+};
+
+struct Base_Type final : public Descriptor
+{
+    virtual ~Base_Type(void) = default;
+
+    size_t  byte_size;
+    size_t  bit_size;
+    uint8_t is_signed   : 1;
+    uint8_t is_floating : 1;
+};
+
+struct Array final : public Descriptor
+{
+    virtual ~Array(void) = default;
+
+    Descriptor *element_type;
+    size_t      size;
+};
+
+struct Pointer final : public Descriptor
+{
+    virtual ~Pointer(void) = default;
+
+    Descriptor *parent;
+};
+
+struct Reference final : public Descriptor
+{
+    virtual ~Reference(void) = default;
+
+    Descriptor *parent;
+};
+
+struct Mutable_Qualifier final : public Descriptor
+{
+    Descriptor *parent;
+};
+
+struct Function_Definition final : public Descriptor
+{
+    virtual ~Function_Definition(void) = default;
+
+    Descriptor                                            *result;
+    std::vector<std::pair<std::string_view, Descriptor *>> args;
+};
 
 struct Info
 {
@@ -308,6 +373,14 @@ struct Info
     Impl                            impl_;
 };
 
+struct CallableSign
+{
+    Info              result_t;
+    size_t            min_arity = 0;
+    size_t            max_arity = 0;
+    std::vector<Info> args;
+};
+
 template<traits::Type_Basic_Scalar T>
 Info
 make_info(std::string name)
@@ -337,6 +410,38 @@ make_info(std::string name)
             std::move(name),
             std::move(layout),
             std::move(impl)
+    };
+}
+
+template<traits::Type_Callable T>
+CallableSign
+make_callable_sign(std::string name)
+{
+    using Args           = boost::callable_traits::args_t<T>;
+    using Result         = boost::callable_traits::return_type_t<T>;
+    constexpr auto arity = std::tuple_size_v<Args>;
+
+    static constexpr auto get_args_signatures = []<typename Tuple>(void) -> const std::vector<std::type_index> &
+    {
+        // for type in Tuple do args_type_signatures.emplace_back(typeid(type)); done
+        static const auto result = []<size_t... I>(std::index_sequence<I...>) -> std::vector<Info>
+        {
+            std::vector<Info> arg_types;
+            (arg_types.emplace_back(make_info(std::tuple_element_t<I, Tuple>)), ...);
+            return arg_types;
+        }(std::make_index_sequence<std::tuple_size_v<Tuple>> {});
+        return result;
+    };
+
+    auto args_type_signatures = get_args_signatures.operator()<Args>();
+
+    auto layout = std::make_unique<memory::Primitive>(sizeof(T), alignof(T));
+
+    return {
+            make_info<Result>(name),
+            arity,
+            arity,
+            std::move(get_args_signatures)
     };
 }
 

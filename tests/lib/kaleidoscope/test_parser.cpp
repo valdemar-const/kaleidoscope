@@ -15,7 +15,6 @@
 
 #include <boost/nowide/iostream.hpp>
 
-#include <boost/type_traits/function_traits.hpp>
 #include <boost/callable_traits.hpp>
 
 #define BOOST_TEST_MODULE kaleidoscope_parser

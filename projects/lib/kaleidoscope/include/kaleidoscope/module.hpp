@@ -384,6 +384,13 @@ struct Module
         return *this;
     }
 
+    template<traits::Type_Callable T>
+    Module &
+    bind_func(std::string name, T &&value)
+    {
+        return *this;
+    }
+
     Module &
     bind_var(std::string name, double value)
     {
