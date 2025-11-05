@@ -389,12 +389,11 @@ BOOST_AUTO_TEST_CASE(anyany_check)
 
 BOOST_AUTO_TEST_CASE(functional_traits)
 {
-    using Example_Func   = boost::function_traits<decltype(example)>;
-    constexpr auto arity = Example_Func::arity;
+    using Args           = boost::callable_traits::args_t<decltype(example)>; // std::tuple<int, double>
+    using Result         = boost::callable_traits::return_type_t<decltype(example)>;
+    constexpr auto arity = std::tuple_size_v<Args>;
 
-    using Args = boost::callable_traits::args_t<decltype(example)>; // std::tuple<int, double>
-
-    std::string result_typename = compiler::demangle(typeid(Example_Func::result_type).name());
+    std::string result_typename = compiler::demangle(typeid(Result).name());
 
     static constexpr auto get_args_signatures = []<typename Tuple>(void) -> const std::vector<std::type_index> &
     {

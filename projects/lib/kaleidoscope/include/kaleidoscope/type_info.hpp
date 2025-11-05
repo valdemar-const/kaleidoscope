@@ -280,6 +280,21 @@ struct Info
     Info &operator=(const Info &) = delete;
     Info &operator=(Info &&)      = default;
 
+  public:
+
+    bool
+    operator==(const Info &other)
+    {
+        if (this == &other)
+        {
+            return true;
+        }
+
+        return name_ == other.name_; // FIXME: наивно, но если имена типов уникальны - сработает.
+    }
+
+  public:
+
     std::string_view
     name() const
     {
