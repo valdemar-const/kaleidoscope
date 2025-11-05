@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kaleidoscope/ast.hpp>
+#include <kaleidoscope/type_info.hpp>
 
 #include <unordered_map>
 #include <variant>
@@ -426,9 +427,10 @@ struct Module
 
   protected:
 
-    std::unordered_map<Symbol_Name, Symbol> identifiers;
-    std::unordered_map<Symbol_Name, Symbol> unary_ops;
-    std::unordered_map<Symbol_Name, Symbol> binary_ops;
+    std::unordered_map<Symbol_Name, type::Info> types;
+    std::unordered_map<Symbol_Name, Symbol>     identifiers;
+    std::unordered_map<Symbol_Name, Symbol>     unary_ops;
+    std::unordered_map<Symbol_Name, Symbol>     binary_ops;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };

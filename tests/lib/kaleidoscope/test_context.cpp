@@ -67,6 +67,10 @@ struct F
         using Kind          = kaleidoscope::Module::operator_properties::Kind;
         using Associativity = kaleidoscope::Module::operator_properties::Associativity;
 
+        ctx.register_type<int64_t>("i64");
+        ctx.register_type<uint64_t>("u64");
+        ctx.register_type<double>("f64");
+
         Module context;
         // script::core
 

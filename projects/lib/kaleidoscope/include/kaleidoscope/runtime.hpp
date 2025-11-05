@@ -110,9 +110,9 @@ struct runtime
     runtime(void);
     runtime(Scope &global_scope);
 
-    runtime(const runtime &copy_from);
+    runtime(const runtime &copy_from) = delete;
     runtime(runtime &&move_from);
-    runtime &operator=(const runtime &copy_from);
+    runtime &operator=(const runtime &copy_from) = delete;
     runtime &operator=(runtime &&move_from);
 
     result eval(Module &module, const Ast &ast);
@@ -385,6 +385,7 @@ inline runtime::runtime(Scope &global_scope)
     }
 }
 
+#if 0
 inline runtime::runtime(const runtime &copy_from)
     : eval_(std::make_unique<eval_node>(*this))
     , ast_promotion_(std::make_unique<ast_promotion>(*this))
@@ -393,6 +394,7 @@ inline runtime::runtime(const runtime &copy_from)
     , current_(copy_from.current_)
 {
 }
+#endif
 
 inline runtime::runtime(runtime &&move_from)
     : eval_(std::make_unique<eval_node>(*this))
@@ -403,6 +405,7 @@ inline runtime::runtime(runtime &&move_from)
 {
 }
 
+#if 0
 inline runtime &
 runtime::operator=(const runtime &copy_from)
 {
@@ -413,6 +416,7 @@ runtime::operator=(const runtime &copy_from)
     this->current_       = copy_from.current_;
     return *this;
 }
+#endif
 
 inline runtime &
 runtime::operator=(runtime &&move_from)

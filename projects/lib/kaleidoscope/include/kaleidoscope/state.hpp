@@ -87,6 +87,7 @@ struct state
 
     state(void)
         : global_()
+        , types_(global_)
         , runtime_(global_)
     {
     }
@@ -118,6 +119,17 @@ struct state
     operator[](std::string symbol)
     {
         return Data_Binder {*this, symbol};
+    }
+
+  public:
+
+    template<typename T>
+    state &
+    register_type(std::string_view name)
+    {
+        types_.register_type<T>(name);
+
+        return *this;
     }
 
   public:
