@@ -19,7 +19,6 @@ target_link_libraries(test-parser
     Boost::uuid
     Boost::unit_test_framework
     Boost::callable_traits)
-target_compile_definitions(test-parser PRIVATE BOOST_SPIRIT_DEBUG)
 
 add_executable(test-context)
 target_sources(test-context PRIVATE test_context.cpp)

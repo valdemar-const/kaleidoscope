@@ -92,7 +92,7 @@ expr
     ;
 
 term
-    : expr_prefix
+    : expr_prefix expr_call*
     ;
 
 expr_prefix
@@ -105,13 +105,12 @@ expr_postfix
 
 expr_primary
     : NUMBER
-    | expr_call
     | ID
     | '(' expr ')'
     ;
 
 expr_call
-    : ID '(' arg_list? ')'
+    : '(' arg_list? ')'
     ;
 
 arg_list

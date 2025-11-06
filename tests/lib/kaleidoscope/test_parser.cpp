@@ -278,7 +278,6 @@ BOOST_AUTO_TEST_CASE(parse_postfix_prefix)
 BOOST_AUTO_TEST_CASE(parse_infix_prefix)
 {
     std::string input = R"KALEIDOSCOPE(
-                    ! (1 + 2);
                     !(1 + 2);
                 )KALEIDOSCOPE"s;
 
@@ -288,14 +287,33 @@ BOOST_AUTO_TEST_CASE(parse_infix_prefix)
     BOOST_TEST_MESSAGE(make_listing(result));
     BOOST_TEST((result.statements.size() == 1));
 
-    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Operation_Infix)));
+    BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Operation_Prefix)));
+}
+
+BOOST_AUTO_TEST_CASE(parse_foo_args)
+{
+    std::string input = R"KALEIDOSCOPE(
+                    foo;
+                    foo();
+                    foo(1);
+                    foo(1 + 2);
+                    foo(-1+ + 2);
+                )KALEIDOSCOPE"s;
+
+    auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
+    BOOST_TEST_MESSAGE(make_listing(result));
+    preprocess(result);
+    BOOST_TEST_MESSAGE(make_listing(result));
+    BOOST_TEST((result.statements.size() == 5));
+
+    BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Functional_Call)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
 {
     std::string input = R"KALEIDOSCOPE(
                     # this is a single line commentary
-                    function foo(a, b, c);                                      # function declaration
+                    function foo(a, b, c);                                 # function declaration
                     1;                                                     # numeric lexeme
                     "3";
                     1 - 2 - 3 ** 5 ** 6 - 4;                               # mathematical expression 1

@@ -94,7 +94,14 @@ const auto prefix_expr_parsed = [](auto &ctx)
     auto &op   = at_c<0>(_attr(ctx));
     auto &expr = at_c<1>(_attr(ctx));
 
-    _val(ctx).reset(new ast::Operation_Prefix(op, std::move(expr)));
+    if (op.has_value())
+    {
+        _val(ctx).reset(new ast::Operation_Prefix(*op, std::move(expr)));
+    }
+    else
+    {
+        _val(ctx).reset(expr.release());
+    }
 };
 
 const auto expr_next_parsed = [](auto &ctx)
@@ -334,11 +341,13 @@ const auto postfix_expr_def =
         (x3::lexeme[simple >> -op])[postfix_expr_parsed];
 
 const auto prefix_expr_def =
-        (x3::lexeme[op >> postfix_expr])[prefix_expr_parsed];
+        (x3::lexeme[-op >> postfix_expr])[prefix_expr_parsed];
+
+const auto infix_op = x3::no_skip[x3::omit[x3::space] >> op >> x3::omit[x3::space]];
 
 // Бинарные выражения
-const auto term_def      = (prefix_expr | postfix_expr)[variant_node_upcast];
-const auto expr_next_def = (op >> term)[expr_next_parsed];
+const auto term_def      = prefix_expr[node_upcast];
+const auto expr_next_def = (infix_op >> term)[expr_next_parsed];
 const auto expr_def      = (term >> *(expr_next))[expr_parsed];
 const auto expr_list_def = (expr[emplace_to_vec] % ',');
 
