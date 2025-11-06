@@ -100,6 +100,12 @@ struct runtime
             return storage_.has_value();
         }
 
+        std::any
+        unwrap(void) const
+        {
+            return storage_;
+        }
+
       protected:
 
         std::any storage_;
@@ -286,24 +292,50 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
 {
     using namespace std::string_literals;
 
-    auto func = owner_.get().scope().get_func(node.callee);
-    if (!func)
-    {
-        throw std::runtime_error("unknown function name: "s + node.callee);
-    }
-
     auto args = std::accumulate(
             node.args.begin(),
             node.args.end(),
             std::vector<std::any> {},
             [&](auto acc, auto &&elem)
             {
-                acc.emplace_back(eval(*elem));
+                acc.emplace_back(eval(*elem).unwrap());
                 return acc;
             }
     );
 
-    result_ = std::any_cast<double>(func(std::move(args)));
+    auto sign = std::accumulate(args.cbegin(), args.cend(), Module::Functional::args {}, [](auto acc, auto &&elem)
+                                {
+                                    acc.emplace_back(elem.type());
+                                    return acc;
+                                });
+
+    auto declaration = std::accumulate(
+            sign.cbegin(), sign.cend(), std::string {}, [](auto acc, auto &&elem)
+            {
+                return (acc.empty()) ? elem.name() : acc + ", " + elem.name();
+            }
+    );
+
+    std::cout << "scan for overload: " << node.callee << "(" << declaration << ")" << std::endl;
+
+    try
+    {
+        auto func = owner_.get().scope().get_overload(node.callee, sign);
+        if (func)
+        {
+            result_ = func.value().get()(std::move(args));
+        }
+    }
+    catch (std::exception &e)
+    {
+        auto error = e.what();
+        auto func  = owner_.get().scope().get_func(node.callee);
+        if (!func)
+        {
+            throw std::runtime_error("unknown function name: "s + node.callee);
+        }
+        result_ = std::any_cast<double>(func(std::move(args)));
+    }
 }
 
 inline void

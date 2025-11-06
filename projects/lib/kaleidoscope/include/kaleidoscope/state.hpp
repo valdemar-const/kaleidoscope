@@ -70,6 +70,14 @@ struct state
             return owner_.get();
         }
 
+        template<traits::Type_Callable T>
+        state &
+        operator=(T &&value)
+        {
+            owner_.get().runtime_.scope().bind_func(symbol_name_, std::forward<T>(value));
+            return owner_.get();
+        }
+
         state &
         operator=(Module::Operator value)
         {

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-find_package(Boost COMPONENTS uuid spirit fusion REQUIRED)
+find_package(Boost COMPONENTS callable_traits uuid spirit fusion REQUIRED)
 find_package(AnyAny REQUIRED)
 find_package(Compiler REQUIRED)
 
@@ -8,7 +8,7 @@ string(TOLOWER ${CMAKE_PROJECT_NAME} target)
 add_library(${target} INTERFACE)
 target_compile_features(${target} INTERFACE cxx_std_20)
 target_include_directories(${target} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(${target} INTERFACE anyanylib Boost::uuid Boost::spirit Boost::fusion compiler::demangle)
+target_link_libraries(${target} INTERFACE anyanylib Boost::callable_traits Boost::uuid Boost::spirit Boost::fusion compiler::demangle)
 
 set(details KaleidoscopeDetails)
 add_library(${details} INTERFACE)

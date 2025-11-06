@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include <boost/uuid.hpp>
+#include <boost/callable_traits.hpp>
 
 #include <cinttypes>
 #include <cstddef>
@@ -252,6 +253,11 @@ namespace traits
                              && std::is_scalar_v<T>
                              && !std::is_pointer_v<T>
                              && !std::is_array_v<T>;
+
+    template<typename T>
+    concept Type_Callable =
+            std::is_function_v<T> || std::is_invocable_v<T>
+            || requires(T t) { &std::decay_t<T>::operator(); };
 } // namespace traits
 } // namespace kaleidoscope
 

@@ -497,4 +497,21 @@ BOOST_AUTO_TEST_CASE(eval_operators)
     BOOST_TEST((ctx.eval("1 + 1") == 2.0));
 }
 
+BOOST_AUTO_TEST_CASE(bind_callable)
+{
+    // function foo(a: f64): f64;
+    ctx["foo"] = [](double a) -> double
+    {
+        return a * a;
+    };
+    // function foo(a: i32): i32;
+    ctx["foo"] = [](int a) -> int
+    {
+        return a * 2;
+    };
+
+    BOOST_TEST((ctx.eval("foo(4.0)") == 16.0));
+    BOOST_TEST((ctx.eval("foo(4)") == 8));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
