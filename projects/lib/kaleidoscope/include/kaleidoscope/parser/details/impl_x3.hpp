@@ -71,7 +71,19 @@ const auto fun_def_parsed = [](auto &ctx)
 
 const auto fun_call_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Functional_Call(at_c<0>(_attr(ctx)), std::move(at_c<1>(_attr(ctx)))));
+    auto &callee   = at_c<0>(_attr(ctx));
+    auto &arg_list = at_c<1>(_attr(ctx));
+#if 1
+    _val(ctx).reset(
+            new ast::Functional_Call(
+                    callee,
+                    (arg_list.has_value()) ? std::move(*arg_list)
+                                           : ast::Functional_Call::Args {}
+            )
+    );
+#else
+    _val(ctx).reset(new ast::Functional_Call(callee, std::move(arg_list)));
+#endif
 };
 
 const auto postfix_expr_parsed = [](auto &ctx)
@@ -215,6 +227,7 @@ const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node       
 const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition         >> fun_def         = "function-defenition";
 const x3::rule<class R_Fun_Def,   std::vector< std::unique_ptr< ast::Node                       >>> expr_list       = "expression-list";
 const x3::rule<class R_Expr,                   std::unique_ptr< ast::Precedence_Agnostic_Expr    >> expr            = "expression-raw";
+const x3::rule<class R_Expr_Group,             std::unique_ptr< ast::Precedence_Agnostic_Expr    >> expr_grouped    = "expression-grouped";
 const x3::rule<class R_Expr_Next,   std::pair<
                                                ast::Precedence_Agnostic_Expr::Op,
                                                std::unique_ptr< ast::Node >
@@ -320,7 +333,7 @@ const auto var_def_def         = var_mut | var;
 const auto fun_decl_def        = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
 const auto fun_block_def       = (expr[emplace_to_vec]) % ';';
 const auto fun_def_def         = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
-const auto fun_call_def        = (identifier >> '(' >> expr_list >> ')')[fun_call_parsed];
+const auto fun_call_def        = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
 const auto variable_def        = identifier[variable_parsed];
 const auto number_def          = x3::double_[number_parsed];
 const auto string_def          = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
@@ -331,11 +344,13 @@ const auto atom_def =
         (number
          | string)[variant_node_upcast];
 
+const auto expr_grouped_def = (x3::lit('(') >> expr >> ')')[node_upcast];
+
 const auto simple_def =
         (atom
          | fun_call
          | variable
-         | (x3::lit('(') >> expr >> ')'))[variant_node_upcast];
+         | expr_grouped)[variant_node_upcast];
 
 const auto postfix_expr_def =
         (x3::lexeme[simple >> -op])[postfix_expr_parsed];
@@ -365,6 +380,7 @@ BOOST_SPIRIT_DEFINE(
         fun_block,
         fun_def,
         expr,
+        expr_grouped,
         term,
         postfix_expr,
         prefix_expr,

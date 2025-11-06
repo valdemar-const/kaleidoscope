@@ -297,7 +297,7 @@ BOOST_AUTO_TEST_CASE(parse_foo_args)
                     foo();
                     foo(1);
                     foo(1 + 2);
-                    foo(-1+ + 2);
+                    foo(foo(-1+) + 2);
                 )KALEIDOSCOPE"s;
 
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
@@ -319,6 +319,9 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
                     1 - 2 - 3 ** 5 ** 6 - 4;                               # mathematical expression 1
                     5 + 5 * 2 - 1;                                         # mathematical expression 1
                     g + -(7 + b) * -1;                                     # mathematical expression 1
+                    a;                                                     # mathematical expression 1
+                    a + b;                                                 # mathematical expression 1
+                    foo(1, 2, 3);                                          # mathematical expression 1
                     a + (b - c * foo(1 + foo(3, 2, a - c), 2, 3) - g) / f; # mathematical expression 1
                     # function definition
                     function foo(a, b, c)
@@ -330,8 +333,8 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     auto result = kaleidoscope::Parser::parse(input.begin(), input.end());
     preprocess(result);
 
-    BOOST_TEST((result.statements.size() == 8));
     BOOST_TEST_MESSAGE(make_listing(result));
+    BOOST_TEST((result.statements.size() == 8));
 
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Literal_Numeric)));
