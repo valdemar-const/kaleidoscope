@@ -19,7 +19,7 @@ struct Visitor_Node_CRTP
     using result_t                         = std::decay_t<ResultType>;
     using Handler                          = std::function<result_t(const Base &)>;
     static constexpr bool has_return_value = !std::is_void_v<result_t>;
-    using Result                           = std::conditional_t<std::is_void_v<result_t>, void, std::optional<result_t>>;
+    using Result                           = std::conditional_t<std::is_void_v<result_t>, V&, std::optional<result_t>>;
 
   protected:
 
@@ -49,9 +49,9 @@ struct Visitor_Node_CRTP
     void
     register_handler(F &&func)
     {
-        handlers.emplace(typeid(T), [f = std::forward<F>(func)](const Base &obj)
+        handlers.emplace(typeid(T), [f = std::forward<F>(func)](const Base &obj) -> result_t
                          {
-                             f(*static_cast<const T *>(&obj));
+                             return f(*static_cast<const T *>(&obj));
                          });
     }
 
@@ -64,11 +64,12 @@ struct Visitor_Node_CRTP
         {
             if constexpr (has_return_value)
             {
-                return handlers.at(id)(obj);
+                return std::make_optional(handlers.at(id)(obj));
             }
             else
             {
                 handlers.at(id)(obj);
+                return *static_cast<V *>(this);
             }
         }
         else if (!is_ignore_unhandled_)
@@ -80,6 +81,10 @@ struct Visitor_Node_CRTP
             if constexpr (has_return_value)
             {
                 return std::nullopt;
+            }
+            else
+            {
+                return *static_cast<V *>(this);
             }
         }
     }

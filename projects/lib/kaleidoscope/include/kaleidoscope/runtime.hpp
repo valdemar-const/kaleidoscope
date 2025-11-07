@@ -519,11 +519,12 @@ inline runtime::ast_promotion::ast_promotion(runtime &owner)
 inline runtime::result
 runtime::ast_promotion::promote(const Ast &ast)
 {
+    runtime::result result;
     for (auto &&stmt : ast.statements)
     {
-        result_ = promote(*stmt);
+        result = promote(*stmt);
     }
-    return result_;
+    return result;
 }
 
 inline runtime::result
