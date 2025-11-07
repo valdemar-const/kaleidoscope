@@ -22,6 +22,17 @@ const auto node_upcast = [](auto &ctx)
     _val(ctx).reset(_attr(ctx).release());
 };
 
+const auto vector_node_upcast = [](auto &ctx)
+{
+    auto &attr   = _attr(ctx);
+    auto &result = _val(ctx);
+
+    for (auto &elem : attr)
+    {
+        result.emplace_back(elem.release());
+    }
+};
+
 const auto variant_node_upcast = [](auto &ctx)
 {
     boost::apply_visitor(
@@ -181,6 +192,28 @@ const auto expr_parsed = [](auto &ctx)
 #endif
 };
 
+const auto tail_parsed = [](auto &ctx)
+{
+    _val(ctx) = std::move(_attr(ctx));
+};
+
+const auto expr_list_parsed = [](auto &ctx)
+{
+    auto          &first  = at_c<0>(_attr(ctx));
+    auto          &tail   = at_c<1>(_attr(ctx));
+    volatile void *break_ = nullptr;
+
+    std::vector<std::unique_ptr<ast::Node>> result;
+    result.emplace_back(first.release());
+
+    for (auto &expr : tail)
+    {
+        result.emplace_back(expr.release());
+    }
+
+    _val(ctx) = std::move(result);
+};
+
 const auto type_decl_parsed = [](auto &ctx)
 {
     _val(ctx).reset(new ast::Type_Declaration(_attr(ctx)));
@@ -225,7 +258,7 @@ const x3::rule<class R_Var_Def,                std::unique_ptr< ast::Data_Object
 const x3::rule<class R_Fun_Decl,               std::unique_ptr< ast::Function_Declaration        >> fun_decl        = "function-declaration";
 const x3::rule<class R_Fun_Block, std::vector< std::unique_ptr< ast::Node                       >>> fun_block       = "function-block";
 const x3::rule<class R_Fun_Def,                std::unique_ptr< ast::Function_Defenition         >> fun_def         = "function-defenition";
-const x3::rule<class R_Fun_Def,   std::vector< std::unique_ptr< ast::Node                       >>> expr_list       = "expression-list";
+const x3::rule<class R_Expr_list, std::vector< std::unique_ptr< ast::Node                       >>> expr_list       = "expression-list";
 const x3::rule<class R_Expr,                   std::unique_ptr< ast::Precedence_Agnostic_Expr    >> expr            = "expression-raw";
 const x3::rule<class R_Expr_Group,             std::unique_ptr< ast::Precedence_Agnostic_Expr    >> expr_grouped    = "expression-grouped";
 const x3::rule<class R_Expr_Next,   std::pair<
@@ -240,7 +273,7 @@ const x3::rule<class R_Simple,                 std::unique_ptr< ast::Node       
 const x3::rule<class R_Fun_Call,               std::unique_ptr< ast::Functional_Call             >> fun_call        = "functional-call";
 const x3::rule<class R_Var,                    std::unique_ptr< ast::Variable                    >> variable        = "variable";
 const x3::rule<class R_Number,                 std::unique_ptr< ast::Literal_Numeric             >> number          = "number";
-const x3::rule<class R_Number,                 std::unique_ptr< ast::Literal_String              >> string          = "string";
+const x3::rule<class R_String,                 std::unique_ptr< ast::Literal_String              >> string          = "string";
 const x3::rule<class R_Identifier_List,        std::vector    < std::string                      >> identifier_list = "identifier-list";
 const x3::rule<class R_Identifier,                              std::string                       > identifier      = "identifier";
 
@@ -361,10 +394,11 @@ const auto prefix_expr_def =
 const auto infix_op = x3::no_skip[x3::omit[x3::space] >> op >> x3::omit[x3::space]];
 
 // Бинарные выражения
-const auto term_def      = prefix_expr[node_upcast];
-const auto expr_next_def = (infix_op >> term)[expr_next_parsed];
-const auto expr_def      = (term >> *(expr_next))[expr_parsed];
-const auto expr_list_def = (expr[emplace_to_vec] % ',');
+const auto term_def        = prefix_expr[node_upcast];
+const auto expr_next_def   = (infix_op >> term)[expr_next_parsed];
+const auto expr_def        = (term >> *(expr_next))[expr_parsed];
+const auto expr_list_delim = x3::no_skip[x3::omit[*x3::space] >> x3::lit(',') >> x3::omit[*x3::space]];
+const auto expr_list_def   = expr[emplace_to_vec] % expr_list_delim;
 
 const auto stmt_def      = (fun_def | fun_decl | var_def | expr)[variant_node_upcast];
 const auto stmt_list_def = stmt[emplace_to_vec] % ';';
@@ -397,6 +431,6 @@ BOOST_SPIRIT_DEFINE(
 );
 
 const auto comment = x3::lexeme["#" >> *(x3::char_ - x3::eol)] >> (x3::eol | x3::eoi);
-const auto skipper = x3::ascii::space | comment;
+const auto skipper = x3::space | comment;
 
 } // namespace kaleidoscope::parser::grammar

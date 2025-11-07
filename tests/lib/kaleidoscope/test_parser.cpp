@@ -296,6 +296,12 @@ BOOST_AUTO_TEST_CASE(parse_foo_args)
                     foo;
                     foo();
                     foo(1);
+                    foo(1,2);
+                    foo(1,2,3);
+                    foo(1, 2);
+                    foo(1, 2, 3);
+                    foo(1 , 2);
+                    foo(1 , 2 , 3);
                     foo(1 + 2);
                     foo(foo(-1+) + 2);
                 )KALEIDOSCOPE"s;
@@ -304,7 +310,7 @@ BOOST_AUTO_TEST_CASE(parse_foo_args)
     BOOST_TEST_MESSAGE(make_listing(result));
     preprocess(result);
     BOOST_TEST_MESSAGE(make_listing(result));
-    BOOST_TEST((result.statements.size() == 5));
+    BOOST_TEST((result.statements.size() == 11));
 
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Functional_Call)));
 }
@@ -334,13 +340,13 @@ BOOST_AUTO_TEST_CASE(parse_numeric_lexeme)
     preprocess(result);
 
     BOOST_TEST_MESSAGE(make_listing(result));
-    BOOST_TEST((result.statements.size() == 8));
+    BOOST_TEST((result.statements.size() == 11));
 
     BOOST_TEST((typeid(*result.statements.at(0)) == typeid(kaleidoscope::ast::Function_Declaration)));
     BOOST_TEST((typeid(*result.statements.at(1)) == typeid(kaleidoscope::ast::Literal_Numeric)));
     BOOST_TEST((typeid(*result.statements.at(2)) == typeid(kaleidoscope::ast::Literal_String)));
     BOOST_TEST((typeid(*result.statements.at(3)) == typeid(kaleidoscope::ast::Operation_Infix)));
-    BOOST_TEST((typeid(*result.statements.at(7)) == typeid(kaleidoscope::ast::Function_Defenition)));
+    BOOST_TEST((typeid(*result.statements.at(10)) == typeid(kaleidoscope::ast::Function_Defenition)));
 }
 
 BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
