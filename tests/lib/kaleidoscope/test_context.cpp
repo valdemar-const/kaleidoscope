@@ -67,6 +67,7 @@ struct F
         using Kind          = kaleidoscope::Module::operator_properties::Kind;
         using Associativity = kaleidoscope::Module::operator_properties::Associativity;
 
+        ctx.register_type<bool>("bool");
         ctx.register_type<int64_t>("i64");
         ctx.register_type<uint64_t>("u64");
         ctx.register_type<double>("f64");
@@ -477,12 +478,9 @@ BOOST_AUTO_TEST_CASE(eval_lexemes)
 
     std::string str {"\"hello, kaleidoscope!\""};
 
-    auto result2 = ctx.eval(input);
+    auto result2 = ctx.eval(str);
     BOOST_TEST(result2.has_value());
-    if (std::string *value = result2)
-    {
-        BOOST_TEST((*value == "hello, kaleidoscope!"));
-    }
+    BOOST_TEST((result2 == "hello, kaleidoscope!"));
 }
 
 BOOST_AUTO_TEST_CASE(eval_operators)

@@ -392,3 +392,11 @@ struct Ast
 };
 
 } // namespace kaleidoscope
+
+namespace kaleidoscope::traits
+{
+
+template<typename T>
+concept Node_Literal = std::is_same_v<ast::Literal_Numeric, std::decay_t<T>>;
+
+} // namespace kaleidoscope::traits

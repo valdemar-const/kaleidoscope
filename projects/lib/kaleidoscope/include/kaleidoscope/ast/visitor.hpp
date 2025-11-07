@@ -8,14 +8,18 @@
 #include <unordered_map>
 #include <concepts>
 #include <stdexcept>
+#include <optional>
 
 namespace kaleidoscope::ast::utils
 {
 
-template<typename V, typename Base>
+template<typename V, typename Base, typename ResultType = void>
 struct Visitor_Node_CRTP
 {
-    using Handler = std::function<void(const Base &)>;
+    using result_t                         = std::decay_t<ResultType>;
+    using Handler                          = std::function<result_t(const Base &)>;
+    static constexpr bool has_return_value = !std::is_void_v<result_t>;
+    using Result                           = std::conditional_t<std::is_void_v<result_t>, void, std::optional<result_t>>;
 
   protected:
 
@@ -52,13 +56,20 @@ struct Visitor_Node_CRTP
     }
 
     template<typename T>
-    V &
+    Result
     visit(const T &obj)
     {
         const auto &id = typeid(obj);
         if (handlers.count(id))
         {
-            handlers.at(id)(obj);
+            if constexpr (has_return_value)
+            {
+                return handlers.at(id)(obj);
+            }
+            else
+            {
+                handlers.at(id)(obj);
+            }
         }
         else if (!is_ignore_unhandled_)
         {
@@ -66,10 +77,11 @@ struct Visitor_Node_CRTP
         }
         else
         {
-            // do nothing
+            if constexpr (has_return_value)
+            {
+                return std::nullopt;
+            }
         }
-
-        return *static_cast<V *>(this);
     }
 
   protected:

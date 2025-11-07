@@ -21,15 +21,9 @@ struct Clone<std::unique_ptr<T>>
 namespace kaleidoscope::ast::utils
 {
 
-struct replicator : Visitor_Node_CRTP<replicator, ast::Node>
+struct replicator : Visitor_Node_CRTP<replicator, ast::Node, std::unique_ptr<ast::Node>>
 {
     replicator(void);
-
-    std::unique_ptr<ast::Node> result(void);
-
-  protected:
-
-    std::unique_ptr<ast::Node> result_;
 };
 
 } // namespace kaleidoscope::ast::utils
@@ -42,51 +36,49 @@ inline replicator::replicator(void)
     register_handler<ast::Literal_Numeric>(
             [&](const ast::Literal_Numeric &node)
             {
-                result_.reset(new ast::Literal_Numeric(node));
+                return std::make_unique<ast::Literal_Numeric>(node);
             }
     );
 
     register_handler<ast::Literal_String>(
             [&](const ast::Literal_String &node)
             {
-                result_.reset(new ast::Literal_String(node));
+                return std::make_unique<ast::Literal_String>(node);
             }
     );
 
     register_handler<ast::Variable>(
             [&](const ast::Variable &node)
             {
-                result_.reset(new ast::Variable(node));
+                return std::make_unique<ast::Variable>(node);
             }
     );
 
     register_handler<ast::Function_Declaration>(
             [&](const ast::Function_Declaration &node)
             {
-                result_.reset(new ast::Function_Declaration(node));
+                return std::make_unique<ast::Function_Declaration>(node);
             }
     );
 
     register_handler<ast::Function_Defenition>(
             [&](const ast::Function_Defenition &node)
             {
-                result_.reset(
-                        new ast::Function_Defenition(
-                                std::unique_ptr<ast::Function_Declaration>(
-                                        static_cast<ast::Function_Declaration *>(
-                                                visit(*node.prototype).result().release()
-                                        )
-                                ),
-                                std::accumulate(
-                                        node.body.begin(),
-                                        node.body.end(),
-                                        ast::Function_Defenition::Body {},
-                                        [&](auto acc, auto &&elem)
-                                        {
-                                            acc.emplace_back(visit(*elem).result());
-                                            return acc;
-                                        }
+                return std::make_unique<ast::Function_Defenition>(
+                        std::unique_ptr<ast::Function_Declaration>(
+                                static_cast<ast::Function_Declaration *>(
+                                        visit(*node.prototype).value().release()
                                 )
+                        ),
+                        std::accumulate(
+                                node.body.begin(),
+                                node.body.end(),
+                                ast::Function_Defenition::Body {},
+                                [&](auto acc, auto &&elem)
+                                {
+                                    acc.emplace_back(visit(*elem).value());
+                                    return acc;
+                                }
                         )
                 );
             }
@@ -95,7 +87,7 @@ inline replicator::replicator(void)
     register_handler<ast::Functional_Call>(
             [&](const ast::Functional_Call &node)
             {
-                result_.reset(new ast::Functional_Call(
+                return std::make_unique<ast::Functional_Call>(
                         node.callee,
                         std::accumulate(
                                 node.args.begin(),
@@ -103,87 +95,81 @@ inline replicator::replicator(void)
                                 ast::Functional_Call::Args {},
                                 [&](auto acc, auto &&el)
                                 {
-                                    acc.emplace_back(visit(*el).result());
+                                    acc.emplace_back(visit(*el).value());
                                     return acc;
                                 }
                         )
-                ));
+                );
             }
     );
 
     register_handler<ast::Operation_Postfix>(
             [&](const ast::Operation_Postfix &node)
             {
-                result_.reset(new ast::Operation_Postfix(
+                return std::make_unique<ast::Operation_Postfix>(
                         node.op,
-                        visit(*node.operand).result()
-                ));
+                        visit(*node.operand).value()
+                );
             }
     );
 
     register_handler<ast::Operation_Prefix>(
             [&](const ast::Operation_Prefix &node)
             {
-                result_.reset(new ast::Operation_Prefix(
+                return std::make_unique<ast::Operation_Prefix>(
                         node.op,
-                        visit(*node.operand).result()
-                ));
+                        visit(*node.operand).value()
+                );
             }
     );
 
     register_handler<ast::Operation_Infix>(
             [&](const ast::Operation_Infix &node)
             {
-                result_.reset(new ast::Operation_Infix(
+                return std::make_unique<ast::Operation_Infix>(
                         node.op,
-                        visit(*node.lhs).result(),
-                        visit(*node.rhs).result()
-                ));
+                        visit(*node.lhs).value(),
+                        visit(*node.rhs).value()
+                );
             }
     );
 
     register_handler<ast::Precedence_Agnostic_Expr>(
             [&](const ast::Precedence_Agnostic_Expr &node)
             {
-                result_.reset(new ast::Precedence_Agnostic_Expr(
-                        visit(*node.first).result(),
+                return std::make_unique<ast::Precedence_Agnostic_Expr>(
+                        visit(*node.first).value(),
                         std::accumulate(
                                 node.operations.begin(),
                                 node.operations.end(),
                                 ast::Precedence_Agnostic_Expr::Operations {},
                                 [&](auto acc, auto &&el)
                                 {
-                                    acc.emplace_back(el.first, visit(*el.second).result());
+                                    acc.emplace_back(el.first, visit(*el.second).value());
                                     return acc;
                                 }
                         )
-                ));
+                );
             }
     );
 
     register_handler<ast::Type_Declaration>(
             [&](const ast::Type_Declaration &node)
             {
-                result_.reset(new ast::Type_Declaration(node));
+                return std::make_unique<ast::Type_Declaration>(node);
             }
     );
 
     register_handler<ast::Data_Object_Definition_List>(
             [&](const ast::Data_Object_Definition_List &node)
             {
-                result_.reset(new ast::Data_Object_Definition_List(
+                return std::make_unique<ast::Data_Object_Definition_List>(
                         node.names,
                         node.is_mutable,
-                        (node.type) ? visit(*node.type).result() : nullptr
-                ));
+                        (node.type) ? visit(*node.type).value() : nullptr
+                );
             }
     );
-}
-
-inline std::unique_ptr<ast::Node>
-replicator::result(void)
-{
-    return std::move(result_);
 }
 
 } // namespace kaleidoscope::ast::utils

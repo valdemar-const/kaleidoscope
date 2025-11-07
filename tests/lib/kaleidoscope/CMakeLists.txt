@@ -4,6 +4,8 @@ find_package(AnyAny   REQUIRED)
 find_package(EnTT     REQUIRED)
 find_package(GSL      REQUIRED)
 
+# --
+
 add_executable(test-parser)
 target_sources(test-parser PRIVATE test_parser.cpp)
 target_link_libraries(test-parser
@@ -19,6 +21,8 @@ target_link_libraries(test-parser
     Boost::uuid
     Boost::unit_test_framework
     Boost::callable_traits)
+
+# --
 
 add_executable(test-context)
 target_sources(test-context PRIVATE test_context.cpp)
@@ -36,5 +40,26 @@ target_link_libraries(test-context
     Boost::unit_test_framework
     Boost::callable_traits)
 
+# --
+
+add_executable(test-type-system)
+target_sources(test-type-system PRIVATE test_type_system.cpp)
+target_link_libraries(test-type-system
+  PRIVATE
+    compiler::big_object
+  PRIVATE
+    kaleidoscope
+  PRIVATE
+    EnTT::EnTT
+    anyanylib
+  PRIVATE
+    Boost::nowide
+    Boost::uuid
+    Boost::unit_test_framework
+    Boost::callable_traits)
+
+# --
+
 add_test(NAME test-parser COMMAND test-parser)
 add_test(NAME test-context COMMAND test-context)
+add_test(NAME test-type-system COMMAND test-type-system)

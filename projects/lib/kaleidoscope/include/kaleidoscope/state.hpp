@@ -142,6 +142,14 @@ struct state
 
   public:
 
+    template<traits::Node_Literal T, traits::Type_Callable F>
+    state &
+    register_literal_promotion(F &&literal_promotion)
+    {
+        runtime_.get_ast_promotion().register_handler<T>(std::forward<F>(literal_promotion));
+        return *this;
+    }
+
     state &
     source(std::string_view src)
     {

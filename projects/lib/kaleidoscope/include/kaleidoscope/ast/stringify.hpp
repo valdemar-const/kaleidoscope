@@ -61,53 +61,53 @@ to_string<Function_Declaration>(const Function_Declaration &node)
 namespace kaleidoscope::ast::utils
 {
 
-struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
+struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node, std::string>
 {
     Stringify(void)
     {
         register_handler<ast::Literal_Numeric>(
-                [&](const ast::Literal_Numeric &obj)
+                [&](const ast::Literal_Numeric &obj) -> std::string
                 {
-                    value = to_string(obj);
+                    return to_string(obj);
                 }
         );
 
         register_handler<ast::Literal_String>(
-                [&](const ast::Literal_String &obj)
+                [&](const ast::Literal_String &obj) -> std::string
                 {
-                    value = "\"" + obj.value + "\"";
+                    return "\"" + obj.value + "\"";
                 }
         );
 
         register_handler<ast::Variable>(
-                [&](const ast::Variable &obj)
+                [&](const ast::Variable &obj) -> std::string
                 {
-                    value = to_string(obj);
+                    return to_string(obj);
                 }
         );
 
         register_handler<ast::Function_Declaration>(
-                [&](const ast::Function_Declaration &obj)
+                [&](const ast::Function_Declaration &obj) -> std::string
                 {
-                    value = to_string(obj);
+                    return to_string(obj);
                 }
         );
 
         register_handler<ast::Function_Defenition>(
-                [&](const ast::Function_Defenition &obj)
+                [&](const ast::Function_Defenition &obj) -> std::string
                 {
-                    std::string result {this->visit(*obj.prototype).result()};
+                    std::string result {this->visit(*obj.prototype).value()};
                     result.pop_back(); // удалить завершающую ')' у прототипа
                     for (auto &&stmt : obj.body)
                     {
-                        result += " " + std::string(this->visit(*stmt).result());
+                        result += " " + std::string(this->visit(*stmt).value());
                     }
-                    value = result + ")";
+                    return result + ")";
                 }
         );
 
         register_handler<ast::Functional_Call>(
-                [&](const ast::Functional_Call &obj)
+                [&](const ast::Functional_Call &obj) -> std::string
                 {
                     std::string result  = "(" + obj.callee + " ";
                     result             += std::accumulate(
@@ -116,73 +116,73 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                             std::string {},
                             [this](auto acc, auto &arg)
                             {
-                                acc += (acc.empty()) ? std::string {this->visit(*arg).result()} : " " + std::string {this->visit(*arg).result()};
+                                acc += (acc.empty()) ? std::string {this->visit(*arg).value()} : " " + std::string {this->visit(*arg).value()};
                                 return acc;
                             }
                     );
-                    value = result + ")";
+                    return result + ")";
                 }
         );
 
         register_handler<ast::Precedence_Agnostic_Expr>(
-                [&](const ast::Precedence_Agnostic_Expr &obj)
+                [&](const ast::Precedence_Agnostic_Expr &obj) -> std::string
                 {
-                    std::string result {this->visit(*obj.first).result()};
+                    std::string result {this->visit(*obj.first).value()};
                     result = "(" + result;
                     for (auto &&[op, expr] : obj.operations)
                     {
-                        result += " " + op + " " + std::string {this->visit(*expr).result()};
+                        result += " " + op + " " + std::string {this->visit(*expr).value()};
                     }
-                    value = result + ")";
+                    return result + ")";
                 }
         );
 
         register_handler<ast::Operation_Postfix>(
-                [&](const ast::Operation_Postfix &obj)
+                [&](const ast::Operation_Postfix &obj) -> std::string
                 {
                     std::string result {
                             "(postfix " + obj.op + ")"
-                            + " " + std::string(this->visit(*obj.operand).result())
+                            + " " + std::string(this->visit(*obj.operand).value())
                     };
 
-                    value = "(" + result + ")";
+                    return "(" + result + ")";
                 }
         );
 
         register_handler<ast::Operation_Prefix>(
-                [&](const ast::Operation_Prefix &obj)
+                [&](const ast::Operation_Prefix &obj) -> std::string
                 {
                     std::string result {
                             obj.op
-                            + " " + std::string(this->visit(*obj.operand).result())
+                            + " " + std::string(this->visit(*obj.operand).value())
                     };
 
-                    value = "(" + result + ")";
+                    return "(" + result + ")";
                 }
         );
 
         register_handler<ast::Operation_Infix>(
-                [&](const ast::Operation_Infix &obj)
+                [&](const ast::Operation_Infix &obj) -> std::string
                 {
                     std::string result {
                             obj.op
-                            + " " + std::string(this->visit(*obj.lhs).result())
-                            + " " + std::string(this->visit(*obj.rhs).result())
+                            + " " + std::string(this->visit(*obj.lhs).value())
+                            + " " + std::string(this->visit(*obj.rhs).value())
                     };
 
-                    value = "(" + result + ")";
+                    return "(" + result + ")";
                 }
         );
 
         register_handler<ast::Type_Declaration>(
-                [&](const ast::Type_Declaration &obj)
+                [&](const ast::Type_Declaration &obj) -> std::string
                 {
-                    value = obj.name;
+                    return obj.name;
                 }
         );
 
         register_handler<ast::Data_Object_Definition_List>(
-                [&](const ast::Data_Object_Definition_List &obj)
+                [&](const ast::Data_Object_Definition_List &obj) -> std::string
                 {
                     auto names =
                             std::accumulate(
@@ -192,30 +192,20 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                                     }
                             );
                     std::string result {
-                            "(type " + std::string(this->visit(*obj.type).result()) + ") " + names
+                            "(type " + std::string(this->visit(*obj.type).value()) + ") " + names
                     };
 
-                    value = "(" + std::string((obj.is_mutable) ? "var" : "let") + " " + result + ")";
+                    return "(" + std::string((obj.is_mutable) ? "var" : "let") + " " + result + ")";
                 }
         );
     }
-
-    std::string_view
-    result(void)
-    {
-        return value;
-    }
-
-  protected:
-
-    std::string value;
 };
 
 template<>
 std::string
 to_string<Node>(const Node &node)
 {
-    return std::string {Stringify {}.visit(node).result()};
+    return Stringify {}.visit(node).value();
 }
 
 } // namespace kaleidoscope::ast::utils

@@ -173,7 +173,7 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     std::reference_wrapper<runtime> owner_;
 };
 
-struct runtime::ast_promotion : public ast::utils::Visitor_Node_CRTP<ast_promotion, ast::Node>
+struct runtime::ast_promotion : public ast::utils::Visitor_Node_CRTP<ast_promotion, ast::Node, runtime::result>
 {
     ast_promotion(runtime &owner);
 
@@ -182,12 +182,10 @@ struct runtime::ast_promotion : public ast::utils::Visitor_Node_CRTP<ast_promoti
 
   protected:
 
-    void visit_(const ast::Literal_Numeric &node);
-    void visit_(const ast::Literal_String &node);
+    runtime::result visit_(const ast::Literal_Numeric &node);
+    runtime::result visit_(const ast::Literal_String &node);
 
   protected:
-
-    runtime::result result_;
 
     std::reference_wrapper<runtime> owner_;
 };
@@ -506,6 +504,8 @@ namespace kaleidoscope
 inline runtime::ast_promotion::ast_promotion(runtime &owner)
     : owner_(owner)
 {
+    // No default promotions
+#if 0
     register_method_handler<ast::Literal_Numeric>(
             static_cast<void (runtime::ast_promotion::*)(const ast::Literal_Numeric &)>(&runtime::ast_promotion::visit_)
     );
@@ -513,6 +513,7 @@ inline runtime::ast_promotion::ast_promotion(runtime &owner)
     register_method_handler<ast::Literal_String>(
             static_cast<void (runtime::ast_promotion::*)(const ast::Literal_String &)>(&runtime::ast_promotion::visit_)
     );
+#endif
 }
 
 inline runtime::result
@@ -528,24 +529,23 @@ runtime::ast_promotion::promote(const Ast &ast)
 inline runtime::result
 runtime::ast_promotion::promote(const ast::Node &node)
 {
-    visit(node);
-    return result_;
+    return visit(node);
 }
 
-inline void
+inline runtime::result
 runtime::ast_promotion::visit_(const ast::Literal_Numeric &node)
 {
-    result_ = std::visit([](const auto &value) -> runtime::result
+    return std::visit([](const auto &value) -> runtime::result
                          {
                              return value;
                          },
                          node.value);
 }
 
-inline void
+inline runtime::result
 runtime::ast_promotion::visit_(const ast::Literal_String &node)
 {
-    result_ = node.value;
+    return node.value;
 }
 
 template<typename T>
