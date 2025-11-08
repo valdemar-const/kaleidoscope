@@ -88,7 +88,14 @@ struct runtime
         result &
         operator=(T &&value)
         {
-            storage_ = std::forward<T>(value);
+            if constexpr (std::is_same_v<std::decay_t<T>, result>)
+            {
+                storage_ = std::forward<T>(value).unwrap();
+            }
+            else
+            {
+                storage_ = std::forward<T>(value);
+            }
             return *this;
         }
 
@@ -104,6 +111,12 @@ struct runtime
         unwrap(void) const
         {
             return storage_;
+        }
+
+        void
+        reset(void)
+        {
+            storage_.reset();
         }
 
       protected:
@@ -165,6 +178,8 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     void visit_(const ast::Operation_Prefix &node);
     void visit_(const ast::Operation_Infix &node);
     void visit_(const ast::Functional_Call &node);
+
+    void process_result(runtime::result promoted, std::string node_name);
 
   protected:
 
@@ -230,16 +245,18 @@ inline runtime::eval_node::eval_node(runtime &owner)
 inline runtime::result
 runtime::eval_node::eval(const Ast &ast)
 {
+    runtime::result result;
     for (auto &&stmt : ast.statements)
     {
-        result_ = eval(*stmt);
+        result = eval(*stmt);
     }
-    return result_;
+    return result;
 }
 
 inline runtime::result
 runtime::eval_node::eval(const ast::Node &node)
 {
+    result_.reset();
     visit(node);
     return result_;
 }
@@ -248,28 +265,20 @@ inline void
 runtime::eval_node::visit_(const ast::Literal_Numeric &node)
 {
     auto result = owner_.get().get_ast_promotion().promote(node);
-    if (result)
-    {
-        result_ = std::move(result);
-    }
-    else
-    {
-        throw std::runtime_error("unknown value materialization from literal number");
-    }
+    process_result(
+            std::move(result),
+            "numeric literal"
+    );
 }
 
 inline void
 runtime::eval_node::visit_(const ast::Literal_String &node)
 {
     auto result = owner_.get().get_ast_promotion().promote(node);
-    if (result)
-    {
-        result_ = std::move(result);
-    }
-    else
-    {
-        throw std::runtime_error("unknown value materialization from literal string");
-    }
+    process_result(
+            std::move(result),
+            "string literal"
+    );
 }
 
 inline void
@@ -333,6 +342,30 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
             throw std::runtime_error("unknown function name: "s + node.callee);
         }
         result_ = std::any_cast<double>(func(std::move(args)));
+    }
+}
+
+inline void
+runtime::eval_node::process_result(runtime::result result, std::string node_name)
+{
+    // TODO: check the type of result is registered in somewhere module
+    auto is_known_type = (result) ? owner_
+                                            .get()
+                                            .scope()
+                                            .find_type(result.type_index().value())
+                                            .has_value()
+                                  : false;
+    if (result)
+    {
+        result_ = std::move(result);
+    }
+    else if (is_known_type)
+    {
+        throw std::runtime_error("unknown value materialization from " + node_name);
+    }
+    else
+    {
+        throw std::runtime_error("unknown type materialized from " + node_name);
     }
 }
 
@@ -530,17 +563,17 @@ runtime::ast_promotion::promote(const Ast &ast)
 inline runtime::result
 runtime::ast_promotion::promote(const ast::Node &node)
 {
-    return visit(node);
+    return visit(node).value_or(runtime::result {});
 }
 
 inline runtime::result
 runtime::ast_promotion::visit_(const ast::Literal_Numeric &node)
 {
     return std::visit([](const auto &value) -> runtime::result
-                         {
-                             return value;
-                         },
-                         node.value);
+                      {
+                          return value;
+                      },
+                      node.value);
 }
 
 inline runtime::result

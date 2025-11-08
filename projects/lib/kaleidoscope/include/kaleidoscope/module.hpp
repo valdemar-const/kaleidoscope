@@ -134,8 +134,7 @@ struct Module
                     return result;
                 };
 
-                static const sign result { typeid(Result),
-                                           get_args_signatures.template operator()<Args>() };
+                static const sign result {typeid(Result), get_args_signatures.template operator()<Args>()};
                 return result;
             }
         };
@@ -513,6 +512,12 @@ struct Module
         return result;
     }
 
+    std::optional<std::reference_wrapper<const type::Info>>
+    find_type(std::type_index injected_id)
+    {
+        return std::nullopt;
+    }
+
     Module &
     bind_func(std::string name, Functional::type value)
     {
@@ -602,11 +607,10 @@ struct Module
 
   protected:
 
-    std::unordered_map<Symbol_Name, type::Info> types;
-    std::unordered_map<Symbol_Name, Symbol>     identifiers;
-    std::unordered_map<Symbol_Name, Symbol>     unary_ops;
-    std::unordered_map<Symbol_Name, Symbol>     binary_ops;
-    std::unordered_map<Symbol_Name, Overloads>  overloads;
+    std::unordered_map<Symbol_Name, Symbol>    identifiers;
+    std::unordered_map<Symbol_Name, Symbol>    unary_ops;
+    std::unordered_map<Symbol_Name, Symbol>    binary_ops;
+    std::unordered_map<Symbol_Name, Overloads> overloads;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };

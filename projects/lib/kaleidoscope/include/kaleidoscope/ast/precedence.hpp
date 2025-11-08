@@ -267,7 +267,7 @@ precedence::pop_to_result(Output &from)
     else if (auto operand = *std::get_if<ast::Node *>(&top))
     {
         from.pop_back();
-        converted_.emplace_back(utils::replicator {}.visit(*operand).result());
+        converted_.emplace_back(utils::replicator {}.visit(*operand).value());
     }
     else
     {
