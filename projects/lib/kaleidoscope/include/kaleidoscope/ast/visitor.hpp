@@ -19,7 +19,7 @@ struct Visitor_Node_CRTP
     using result_t                         = std::decay_t<ResultType>;
     using Handler                          = std::function<result_t(const Base &)>;
     static constexpr bool has_return_value = !std::is_void_v<result_t>;
-    using Result                           = std::conditional_t<std::is_void_v<result_t>, V&, std::optional<result_t>>;
+    using Result                           = std::conditional_t<std::is_void_v<result_t>, V &, std::optional<result_t>>;
 
   protected:
 

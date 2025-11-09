@@ -178,6 +178,7 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     void visit_(const ast::Operation_Prefix &node);
     void visit_(const ast::Operation_Infix &node);
     void visit_(const ast::Functional_Call &node);
+    void visit_(const ast::Data_Object_Definition_List &node);
 
     void process_result(runtime::result promoted, std::string node_name);
 
@@ -240,6 +241,10 @@ inline runtime::eval_node::eval_node(runtime &owner)
     register_method_handler<ast::Operation_Prefix>(
             static_cast<void (runtime::eval_node::*)(const ast::Operation_Prefix &)>(&runtime::eval_node::visit_)
     );
+
+    register_method_handler<ast::Data_Object_Definition_List>(
+            static_cast<void (runtime::eval_node::*)(const ast::Data_Object_Definition_List &)>(&runtime::eval_node::visit_)
+    );
 }
 
 inline runtime::result
@@ -258,7 +263,7 @@ runtime::eval_node::eval(const ast::Node &node)
 {
     result_.reset();
     visit(node);
-    return result_;
+    return std::move(result_);
 }
 
 inline void
@@ -342,6 +347,33 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
             throw std::runtime_error("unknown function name: "s + node.callee);
         }
         result_ = std::any_cast<double>(func(std::move(args)));
+    }
+}
+
+inline void
+runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
+{
+    ast::Type_Declaration *type_info = (node.type) ? dynamic_cast<ast::Type_Declaration *>(node.type.get()) : nullptr;
+    if (!type_info)
+    {
+        throw std::runtime_error("undefined type for data object instantiation");
+    }
+
+    const auto type_service = owner_.get().scope().find_type(type_info->name);
+
+    if (!type_service)
+    {
+        throw std::runtime_error("undefined type: " + type_info->name);
+    }
+
+    for (const auto &name : node.names)
+    {
+        // try make new data object in current scope
+
+        owner_.get().scope().bind_var(
+                "name",
+                (*type_service).get().impl().make_default_value()
+        ); // -> std::any value of default type_info->name
     }
 }
 

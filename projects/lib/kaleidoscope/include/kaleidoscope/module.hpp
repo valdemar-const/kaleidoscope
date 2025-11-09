@@ -250,8 +250,9 @@ struct Module
         std::any            data_;
     };
 
-    using precedence  = std::unordered_map<std::string, operator_properties>;
-    using Symbol_Name = std::string;
+    using precedence      = std::unordered_map<std::string, operator_properties>;
+    using Symbol_Name     = std::string;
+    using Symbol_Name_Ref = std::reference_wrapper<Symbol_Name>;
 
     struct Symbol
     {
@@ -513,9 +514,28 @@ struct Module
     }
 
     std::optional<std::reference_wrapper<const type::Info>>
-    find_type(std::type_index injected_id)
+    find_type(std::type_index injected_id) const
     {
         return std::nullopt;
+    }
+
+    std::optional<std::reference_wrapper<const type::Info>>
+    find_type(std::string name) const
+    {
+        if (types.contains(name))
+        {
+            return std::ref(types.at(name));
+        }
+
+        for (const auto &link : linked)
+        {
+            if (auto info = link.get().find_type(name))
+            {
+                return *info;
+            }
+        }
+
+        return std::nullopt; // TODO: ensure type in current/linked modules
     }
 
     Module &
@@ -564,14 +584,16 @@ struct Module
         return *this;
     }
 
+    template<typename T>
+        requires(std::is_copy_constructible_v<T>)
     Module &
-    bind_var(std::string name, double value)
+    bind_var(std::string name, T &&value)
     {
         identifiers.insert_or_assign(
                 name,
                 Symbol {
                         Functional {
-                                [=](std::vector<std::any> args) -> std::any
+                                [value = std::forward<T>(value)](std::vector<std::any> args) -> std::any
                                 {
                                     return value;
                                 }
@@ -607,10 +629,13 @@ struct Module
 
   protected:
 
-    std::unordered_map<Symbol_Name, Symbol>    identifiers;
-    std::unordered_map<Symbol_Name, Symbol>    unary_ops;
-    std::unordered_map<Symbol_Name, Symbol>    binary_ops;
-    std::unordered_map<Symbol_Name, Overloads> overloads;
+    std::unordered_map<Symbol_Name, type::Info>          types;
+    std::unordered_map<Symbol_Name, Symbol_Name_Ref>     typedefs;
+    std::unordered_map<std::type_index, Symbol_Name_Ref> external_types;
+    std::unordered_map<Symbol_Name, Symbol>              identifiers;
+    std::unordered_map<Symbol_Name, Symbol>              unary_ops;
+    std::unordered_map<Symbol_Name, Symbol>              binary_ops;
+    std::unordered_map<Symbol_Name, Overloads>           overloads;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };

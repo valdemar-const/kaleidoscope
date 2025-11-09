@@ -7,94 +7,11 @@
 
 #include <concepts>
 #include <type_traits>
-#include <typeindex>
-
-#include <anyany/anyany.hpp>
-#include <anyany/type_descriptor.hpp>
 
 #include <cinttypes>
 
 #include <compiler/demangle.hpp>
 #include <cassert>
-
-namespace aa
-{
-
-struct type_info_rtti
-{
-    template<typename T>
-    static aa::descriptor_t
-    do_invoke(const T &self)
-    {
-        if constexpr (std::is_polymorphic_v<std::decay_t<decltype(self)>>)
-        {
-            static const auto typename_ = [](const std::type_info &type) -> std::string
-            {
-                auto result = compiler::demangle(type.name())
-#if defined(__GNUG__) // TODO: undefined mangling behaviour through implementations
-                            + "]"
-#else
-                            + ">(void)"
-#endif
-                        ;
-                if (result.starts_with("struct"))
-                {
-                    result = std::string {result.begin() + sizeof("struct"), result.end()};
-                }
-                return result;
-            }(typeid(self));
-            return aa::descriptor_t {typename_.data()};
-        }
-        else
-        {
-            return aa::descriptor_v<std::decay_t<decltype(self)>>;
-        }
-    }
-
-    template<typename CRTP>
-    struct plugin
-    {
-        aa::descriptor_t
-        type_descriptor() const
-        {
-            return aa::invoke<::aa::type_info_rtti>(static_cast<const CRTP &>(*this));
-        }
-    };
-};
-
-struct type_index
-{
-    template<typename T>
-    static std::type_index
-    do_invoke(const T &self)
-    {
-        return std::type_index(typeid(self));
-    }
-
-    template<typename CRTP>
-    struct plugin
-    {
-        std::type_index
-        type_index() const
-        {
-            return aa::invoke<::aa::type_index>(static_cast<const CRTP &>(*this));
-        }
-    };
-};
-
-/** any_with included all type information for both RTTI type_index and anyany descriptor_t */
-template<typename... Args>
-using any_with_t = aa::any_with<type_info_rtti, type_index, Args...>;
-
-/** poly_ref included all type information for both RTTI type_index and anyany descriptor_t */
-template<typename... Args>
-using poly_ref_t = aa::poly_ref<type_info_rtti, type_index, Args...>;
-
-/** poly_ptr included all type information for both RTTI type_index and anyany descriptor_t */
-template<typename... Args>
-using poly_ptr_t = aa::poly_ptr<type_info_rtti, type_index, Args...>;
-
-} // namespace aa
 
 namespace kaleidoscope::ast
 {
@@ -110,13 +27,6 @@ concept Ast_Node = requires {
 };
 
 } // namespace kaleidoscope::traits
-
-namespace kaleidoscope::ast
-{
-using INode    = aa::any_with_t<aa::move>;
-using INodeRef = aa::poly_ref_t<>;
-using INodePtr = aa::poly_ptr_t<>;
-} // namespace kaleidoscope::ast
 
 namespace kaleidoscope::ast
 {

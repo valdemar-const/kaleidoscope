@@ -7,6 +7,7 @@
 #include <bit>
 #include <typeindex>
 #include <type_traits>
+#include <any>
 
 #include <boost/uuid.hpp>
 #include <boost/callable_traits.hpp>
@@ -272,6 +273,7 @@ struct Info
         std::function<void(void *self, void *other)> clone;
         std::function<void(void *self, void *other)> move;
         std::function<void(void *self)>              dispose;
+        std::function<std::any(void)>                make_default_value;
     };
 
     Info(std::string name, std::unique_ptr<memory::Layout> layout, Impl impl)
@@ -297,6 +299,12 @@ struct Info
         }
 
         return name_ == other.name_; // FIXME: наивно, но если имена типов уникальны - сработает.
+    }
+
+    const Impl &
+    impl(void) const
+    {
+        return impl_;
     }
 
   public:
@@ -337,6 +345,10 @@ make_info(std::string name)
             {
                 return;
             },
+            .make_default_value = [](void) -> std::any
+            {
+                return T {};
+            }
     };
 
     return {
