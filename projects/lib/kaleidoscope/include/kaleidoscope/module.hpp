@@ -26,12 +26,23 @@ struct Module
 {
     struct Symbol; // forward decl
 
-    enum class Function_Filter
+    enum class Symbol_Kind : uint8_t
     {
-        Any,
-        Func,
-        BinOp,
-        UnOp
+        Type,
+        Postfix,
+        Prefix,
+        Infix,
+        Function,
+        DataObject
+    };
+
+    using Symbol_Name = std::string;
+    using Symbol_Idx  = size_t;
+
+    struct Symbol_Key
+    {
+        Symbol_Name name;
+        Symbol_Kind kind;
     };
 
     struct operator_properties
@@ -134,7 +145,8 @@ struct Module
                     return result;
                 };
 
-                static const sign result {typeid(Result), get_args_signatures.template operator()<Args>()};
+                static const sign result { typeid(Result),
+                                           get_args_signatures.template operator()<Args>() };
                 return result;
             }
         };
@@ -212,15 +224,22 @@ struct Module
         std::optional<sign> signature_;
     };
 
-    using Overloads = std::map<Functional::sign, Symbol>;
+    using Overloads = std::map<Functional::sign, Functional>;
 
-    struct Operator
+    struct Operator : Functional
     {
         using type = std::function<std::any(std::vector<std::any>)>;
 
         Operator(operator_properties properties, type body)
-            : props_(properties)
-            , data_(body)
+            : Functional(std::move(body))
+            , props_(properties)
+        {
+        }
+
+        template<traits::Type_Callable T>
+        Operator(operator_properties properties, sign signature, T &&body)
+            : Functional(std::move(signature), std::forward<T>(body))
+            , properties_(std::move(properties))
         {
         }
 
@@ -228,15 +247,6 @@ struct Module
         Operator(Operator &&)                 = default;
         Operator &operator=(const Operator &) = default;
         Operator &operator=(Operator &&)      = default;
-
-        template<typename... Args>
-        std::any value(Args... args);
-
-        const std::any &
-        data(void) const
-        {
-            return data_;
-        }
 
         const operator_properties &
         props() const
@@ -247,16 +257,17 @@ struct Module
       protected:
 
         operator_properties props_;
-        std::any            data_;
     };
 
-    using precedence      = std::unordered_map<std::string, operator_properties>;
-    using Symbol_Name     = std::string;
-    using Symbol_Name_Ref = std::reference_wrapper<Symbol_Name>;
+    using precedence = std::unordered_map<std::string, operator_properties>;
+
+    struct Overload_Set
+    {
+    };
 
     struct Symbol
     {
-        using Object = std::variant<Data_Object, Functional, Operator>;
+        using Object = std::variant<type::Info *, Data_Object, Overload_Set>;
 
         Symbol(Object value)
             : obj_(value)
@@ -385,7 +396,7 @@ struct Module
     get_binop(const std::string &name)
     {
         using namespace std::string_literals;
-        auto res = find_symbol(name, Function_Filter::BinOp);
+        auto res = find_symbol(name, Function_Filter::Infix);
 
         if (res.has_value())
         {
@@ -408,7 +419,7 @@ struct Module
     get_unop(const std::string &name)
     {
         using namespace std::string_literals;
-        auto res = find_symbol(name, Function_Filter::UnOp);
+        auto res = find_symbol(name, Function_Filter::Prefix);
 
         if (res.has_value())
         {
@@ -475,8 +486,8 @@ struct Module
         Result result;
 
         bool is_search_for_func  = (Function_Filter::Any == filter_by) || (Function_Filter::Func == filter_by);
-        bool is_search_for_unop  = (Function_Filter::Any == filter_by) || (Function_Filter::UnOp == filter_by);
-        bool is_search_for_binop = (Function_Filter::Any == filter_by) || (Function_Filter::BinOp == filter_by);
+        bool is_search_for_unop  = (Function_Filter::Any == filter_by) || (Function_Filter::Prefix == filter_by);
+        bool is_search_for_binop = (Function_Filter::Any == filter_by) || (Function_Filter::Infix == filter_by);
 
         if (is_search_for_func && identifiers.count(name))
         {
@@ -527,7 +538,7 @@ struct Module
             return std::ref(types.at(name));
         }
 
-        for (const auto &link : linked)
+        for (const auto &link : linked | std::views::reverse)
         {
             if (auto info = link.get().find_type(name))
             {
@@ -629,13 +640,9 @@ struct Module
 
   protected:
 
-    std::unordered_map<Symbol_Name, type::Info>          types;
-    std::unordered_map<Symbol_Name, Symbol_Name_Ref>     typedefs;
-    std::unordered_map<std::type_index, Symbol_Name_Ref> external_types;
-    std::unordered_map<Symbol_Name, Symbol>              identifiers;
-    std::unordered_map<Symbol_Name, Symbol>              unary_ops;
-    std::unordered_map<Symbol_Name, Symbol>              binary_ops;
-    std::unordered_map<Symbol_Name, Overloads>           overloads;
+    std::unordered_map<Symbol_Key, Symbol_Idx> lookup_cache;
+    std::vector<Symbol>                        symbols;
+    std::set<std::unique_ptr<type::Info>>      types;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };

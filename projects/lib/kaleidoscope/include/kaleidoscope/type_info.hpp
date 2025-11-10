@@ -11,6 +11,7 @@
 
 #include <boost/uuid.hpp>
 #include <boost/callable_traits.hpp>
+#include <boost/functional/hash.hpp>
 
 #include <cinttypes>
 #include <cstddef>
@@ -265,97 +266,228 @@ namespace traits
 namespace kaleidoscope::type
 {
 
-struct Info
+enum class Encoding : uint8_t
 {
-    struct Impl
+    Signed,   // twos_complement
+    Unsigned, // binary
+    Float,    // IEEE754
+    Boolean   // 0/1
+};
+
+struct Operator_Properties
+{
+    using Precedence = size_t;
+
+    enum class Associativity : uint8_t
     {
-        std::function<void(void *self)>              initialize;
-        std::function<void(void *self, void *other)> clone;
-        std::function<void(void *self, void *other)> move;
-        std::function<void(void *self)>              dispose;
-        std::function<std::any(void)>                make_default_value;
+        Left,
+        Right
     };
 
-    Info(std::string name, std::unique_ptr<memory::Layout> layout, Impl impl)
-        : name_(std::move(name))
-        , layout_(std::move(layout))
-        , impl_(std::move(impl))
+    enum class Kind : uint8_t
     {
-    }
+        Postfix,
+        Prefix,
+        Infix
+    };
 
-    Info(const Info &)            = delete;
-    Info(Info &&)                 = default;
-    Info &operator=(const Info &) = delete;
-    Info &operator=(Info &&)      = default;
+    Kind          kind          = Kind::Infix;
+    Associativity associativity = Associativity::Left;
+    Precedence    precedence    = 0; /**< lesser is higher */
+};
+
+struct Info
+{
+    virtual ~Info(void)                    = default;
+    virtual size_t fingerprint(void) const = 0;
 
   public:
 
-    bool
-    operator==(const Info &other)
+    // Для STL контейнеров
+    friend bool
+    operator==(const Info &a, const Info &b)
     {
-        if (this == &other)
+        return &a == &b || a.fingerprint() == b.fingerprint();
+    }
+
+    friend bool
+    operator<(const Info &a, const Info &b)
+    {
+        return a.fingerprint() < b.fingerprint();
+    }
+
+    struct Hash
+    {
+        size_t
+        operator()(const Info &type) const
         {
-            return true;
+            return type.fingerprint();
         }
 
-        return name_ == other.name_; // FIXME: наивно, но если имена типов уникальны - сработает.
-    }
+        size_t
+        operator()(const std::unique_ptr<Info> &type) const
+        {
+            return type->fingerprint();
+        }
+    };
 
-    const Impl &
-    impl(void) const
+    std::optional<std::string> name;
+};
+
+struct Void final : public Info
+{
+    ~Void(void) override = default;
+
+    size_t
+    fingerprint(void) const override
     {
-        return impl_;
+        size_t seed = 0;
+        boost::hash_combine(seed, "void");
+        boost::hash_combine(seed, 0);
+        return seed;
     }
+};
 
-  public:
+struct Primitive final : public Info
+{
+    ~Primitive(void) override = default;
 
-    std::string_view
-    name() const
+    size_t
+    fingerprint(void) const override
     {
-        return {name_};
+        size_t seed = 0;
+        boost::hash_combine(seed, "primitive");
+        boost::hash_combine(seed, name.value());
+        boost::hash_combine(seed, static_cast<size_t>(encoding));
+        boost::hash_combine(seed, byte_size);
+        return seed;
     }
 
-  protected:
+    size_t   byte_size = sizeof(std::byte);
+    size_t   alignment = alignof(std::byte);
+    Encoding encoding  = Encoding::Signed;
+};
 
-    std::string                     name_;
-    std::unique_ptr<memory::Layout> layout_;
-    Impl                            impl_;
+struct Formal_Parameter final : public Info
+{
+    ~Formal_Parameter(void) override = default;
+
+    size_t
+    fingerprint(void) const override
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, "formal_parameter");
+        boost::hash_combine(seed, name.value());
+        boost::hash_combine(seed, type->fingerprint());
+        return seed;
+    }
+
+    std::unique_ptr<Info> type;
+};
+
+struct Function final : public Info
+{
+    ~Function(void) override = default;
+
+    size_t
+    fingerprint(void) const override
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, "function");
+        boost::hash_combine(seed, name.value());
+        boost::hash_combine(seed, ret_type->fingerprint());
+        for (const auto &arg : arguments)
+        {
+            boost::hash_combine(seed, arg->fingerprint());
+        }
+        return seed;
+    }
+
+    std::unique_ptr<Info>                          ret_type;
+    std::vector<std::unique_ptr<Formal_Parameter>> arguments;
+};
+
+struct Operator final : public Info
+{
+    ~Operator(void) override = default;
+
+    std::unique_ptr<Function> prototype;
+    Operator_Properties       properties;
+};
+
+struct Cpp_Type final : public Info
+{
+    ~Cpp_Type(void) override = default;
+
+    size_t
+    fingerprint(void) const override
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, "externcpp");
+        boost::hash_combine(seed, name.value());
+        boost::hash_combine(seed, external);
+        boost::hash_combine(seed, inner->fingerprint());
+        boost::hash_combine(seed, 0);
+        return seed;
+    }
+
+    std::type_index       external;
+    std::unique_ptr<Info> inner;
 };
 
 template<traits::Type_Basic_Scalar T>
-Info
+consteval Encoding
+encoding_of()
+{
+    constexpr bool is_floating = std::is_floating_v<T>;
+    constexpr bool is_signed   = std::is_signed_v<T>;
+    constexpr bool is_unsigned = std::is_unsigned_v<T>;
+    constexpr bool is_boolean  = std::is_same_v<std::decay_t<T>, bool>;
+
+    if constexpr (is_floating)
+    {
+        return Encoding::Float;
+    }
+    else if constexpr (is_boolean)
+    {
+        return Encoding::Boolean;
+    }
+    else if constexpr (is_signed)
+    {
+        return Encoding::Signed;
+    }
+    else if constexpr (is_unsigned)
+    {
+        return Encoding::Unsigned;
+    }
+    else
+    {
+        static_assert(false, "Unsupported type Encoding");
+    }
+}
+
+template<traits::Type_Basic_Scalar T>
+std::unique_ptr<Info>
 make_info(std::string name)
 {
-    auto layout = std::make_unique<memory::Primitive>(sizeof(T), alignof(T));
+    auto info      = std::make_unique<Primitive>(std::move(name), sizeof(T), alignof(T), encoding_of<T>());
+    auto externcpp = std::make_unique<Cpp_Type>(typeid(T), std::move(info));
 
-    const Info::Impl impl {
-            .initialize = [size = layout->size()](void *self) -> void
-            {
-                std::memset(self, 0, size);
-            },
-            .clone = [size = layout->size()](void *self, void *other) -> void
-            {
-                std::memcpy(self, other, size);
-            },
-            .move = [size = layout->size()](void *self, void *other) -> void
-            {
-                std::memcpy(self, other, size);
-            },
-            .dispose = [](void *self) -> void
-            {
-                return;
-            },
-            .make_default_value = [](void) -> std::any
-            {
-                return T {};
-            }
-    };
-
-    return {
-            std::move(name),
-            std::move(layout),
-            std::move(impl)
-    };
+    return externcpp;
 }
 
 } // namespace kaleidoscope::type
+
+namespace std
+{
+// Специализация std::hash
+template<>
+struct hash<kaleidoscope::type::Info>
+{
+    size_t
+    operator()(const kaleidoscope::type::Info &type) const
+    {
+        return type.fingerprint();
+    }
+};
+} // namespace std
