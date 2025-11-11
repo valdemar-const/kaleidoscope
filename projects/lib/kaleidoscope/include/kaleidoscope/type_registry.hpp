@@ -407,6 +407,7 @@ struct Registry
         if (is_emplaced)
         {
             type_key_by_name_.emplace(std::make_pair(type_name, index));
+            binded_types_.emplace(std::make_pair(typeid(T), index));
         }
 
         return (is_emplaced) ? it->second.get() : nullptr;
@@ -491,6 +492,7 @@ struct Registry
   protected:
 
     std::map<std::string, Type_Key>                type_key_by_name_;
+    std::map<std::type_index, Type_Key>            binded_types_;
     std::map<Type_Key, std::unique_ptr<Type_Info>> storage_;
 };
 
