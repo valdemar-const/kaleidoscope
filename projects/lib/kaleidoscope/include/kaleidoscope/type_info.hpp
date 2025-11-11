@@ -1,5 +1,7 @@
 #pragma once
 
+#include <compiler/demangle.hpp>
+
 #include <vector>
 #include <string>
 #include <optional>
@@ -8,6 +10,9 @@
 #include <typeindex>
 #include <type_traits>
 #include <any>
+#include <ranges>
+#include <numeric>
+#include <algorithm>
 
 #include <boost/uuid.hpp>
 #include <boost/callable_traits.hpp>
@@ -298,8 +303,9 @@ struct Operator_Properties
 
 struct Info
 {
-    virtual ~Info(void)                    = default;
-    virtual size_t fingerprint(void) const = 0;
+    virtual ~Info(void)                                   = default;
+    virtual size_t                fingerprint(void) const = 0;
+    virtual std::unique_ptr<Info> clone(void) const       = 0;
 
   public:
 
@@ -338,12 +344,21 @@ struct Void final : public Info
 {
     ~Void(void) override = default;
 
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Void>(*this);
+    }
+
     size_t
     fingerprint(void) const override
     {
         size_t seed = 0;
         boost::hash_combine(seed, "void");
-        boost::hash_combine(seed, 0);
+        if (name)
+        {
+            boost::hash_combine(seed, *name);
+        }
         return seed;
     }
 };
@@ -352,12 +367,21 @@ struct Primitive final : public Info
 {
     ~Primitive(void) override = default;
 
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Primitive>(*this);
+    }
+
     size_t
     fingerprint(void) const override
     {
         size_t seed = 0;
         boost::hash_combine(seed, "primitive");
-        boost::hash_combine(seed, name.value());
+        if (name)
+        {
+            boost::hash_combine(seed, *name);
+        }
         boost::hash_combine(seed, static_cast<size_t>(encoding));
         boost::hash_combine(seed, byte_size);
         return seed;
@@ -372,12 +396,21 @@ struct Formal_Parameter final : public Info
 {
     ~Formal_Parameter(void) override = default;
 
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Formal_Parameter>(name, type->clone());
+    }
+
     size_t
     fingerprint(void) const override
     {
         size_t seed = 0;
         boost::hash_combine(seed, "formal_parameter");
-        boost::hash_combine(seed, name.value());
+        if (name)
+        {
+            boost::hash_combine(seed, *name);
+        }
         boost::hash_combine(seed, type->fingerprint());
         return seed;
     }
@@ -387,14 +420,31 @@ struct Formal_Parameter final : public Info
 
 struct Function final : public Info
 {
+    using Args               = std::vector<std::unique_ptr<Formal_Parameter>>;
     ~Function(void) override = default;
+
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        auto cloned_args = std::accumulate(
+                arguments.cbegin(), arguments.cend(), Args {}, [](auto acc, const auto &arg)
+                {
+                    acc.emplace_back(arg->clone());
+                    return acc;
+                }
+        );
+        return std::make_unique<Function>(name, ret_type->clone(), std::move(cloned_args));
+    }
 
     size_t
     fingerprint(void) const override
     {
         size_t seed = 0;
-        boost::hash_combine(seed, "function");
-        boost::hash_combine(seed, name.value());
+        boost::hash_combine(seed, "fn");
+        if (name)
+        {
+            boost::hash_combine(seed, *name);
+        }
         boost::hash_combine(seed, ret_type->fingerprint());
         for (const auto &arg : arguments)
         {
@@ -407,9 +457,78 @@ struct Function final : public Info
     std::vector<std::unique_ptr<Formal_Parameter>> arguments;
 };
 
+struct Variable final : public Info
+{
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Primitive>(name, type->clone());
+    }
+
+    size_t
+    fingerprint(void) const override
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, "var");
+        if (name)
+        {
+            boost::hash_combine(seed, *name);
+        }
+        boost::hash_combine(seed, type->fingerprint());
+
+        return seed;
+    }
+
+    std::unique_ptr<Info> type;
+};
+
+struct Mutable_Qualifier final : public Info
+{
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Primitive>(name, redirect->clone());
+    }
+
+    size_t
+    fingerprint(void) const override
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, "const");
+        boost::hash_combine(seed, redirect->fingerprint());
+
+        return seed;
+    }
+
+    std::unique_ptr<Info> redirect;
+};
+
 struct Operator final : public Info
 {
     ~Operator(void) override = default;
+
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Operator>(name, prototype->clone(), properties);
+    }
+
+    size_t
+    fingerprint(void) const override
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, "operator");
+        if (name)
+        {
+            boost::hash_combine(seed, *name);
+        }
+        boost::hash_combine(seed, prototype->fingerprint());
+        boost::hash_combine(seed, properties.kind);
+        boost::hash_combine(seed, properties.associativity);
+        boost::hash_combine(seed, properties.precedence);
+
+        return seed;
+    }
 
     std::unique_ptr<Function> prototype;
     Operator_Properties       properties;
@@ -418,6 +537,12 @@ struct Operator final : public Info
 struct Cpp_Type final : public Info
 {
     ~Cpp_Type(void) override = default;
+
+    std::unique_ptr<Info>
+    clone(void) const override
+    {
+        return std::make_unique<Operator>(name, external, inner->clone());
+    }
 
     size_t
     fingerprint(void) const override
@@ -439,7 +564,7 @@ template<traits::Type_Basic_Scalar T>
 consteval Encoding
 encoding_of()
 {
-    constexpr bool is_floating = std::is_floating_v<T>;
+    constexpr bool is_floating = std::is_floating_point_v<T>;
     constexpr bool is_signed   = std::is_signed_v<T>;
     constexpr bool is_unsigned = std::is_unsigned_v<T>;
     constexpr bool is_boolean  = std::is_same_v<std::decay_t<T>, bool>;
@@ -470,7 +595,7 @@ template<traits::Type_Basic_Scalar T>
 std::unique_ptr<Info>
 make_info(std::string name)
 {
-    auto info      = std::make_unique<Primitive>(std::move(name), sizeof(T), alignof(T), encoding_of<T>());
+    auto info      = std::make_unique<Primitive>(compiler::demangle(name.data()), sizeof(T), alignof(T), encoding_of<T>());
     auto externcpp = std::make_unique<Cpp_Type>(typeid(T), std::move(info));
 
     return externcpp;

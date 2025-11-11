@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kaleidoscope/type_info.hpp>
 #include <kaleidoscope/module.hpp>
 #include <kaleidoscope/ast/visitor.hpp>
 #include <kaleidoscope/ast/replicator.hpp>
@@ -14,7 +15,6 @@ namespace kaleidoscope::ast::utils
 /**
  * @brief Спуститься по AST и найти все Precedence_Agnostic_Expr
  *        и заменить их все узлами выражений согласно приоритету операторов
- *
  */
 struct precedence : ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast::Node>
 {
@@ -217,7 +217,7 @@ precedence::visit_(const ast::Precedence_Agnostic_Expr &ast)
             auto &top_info = precedence_.get().at(ops.back());
 
             if (top_info.precedence < curr_info.precedence
-                || (top_info.precedence == curr_info.precedence && top_info.associativity == Module::operator_properties::Associativity::Left))
+                || (top_info.precedence == curr_info.precedence && top_info.associativity == type::Operator_Properties::Associativity::Left))
             {
                 output.emplace_back(ops.back());
                 ops.pop_back();
