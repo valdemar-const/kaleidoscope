@@ -73,7 +73,21 @@ struct F
                         {
                             return std::visit([](const auto &v) -> std::any
                                               {
-                                                  return v;
+                                                  using Number = std::decay_t<decltype(v)>;
+                                                  if constexpr (std::is_floating_point_v<Number>)
+                                                  {
+                                                      return static_cast<double>(v);
+                                                  }
+                                                  else if constexpr (std::is_signed_v<Number>)
+                                                  {
+                                                      return static_cast<int64_t>(v);
+                                                  }
+                                                  else if constexpr (std::is_unsigned_v<Number>)
+                                                  {
+                                                      return static_cast<uint64_t>(v);
+                                                  }
+
+                                                  throw std::runtime_error("unsupported runtime value type: "s + compiler::demangle(typeid(v).name()));
                                               },
                                               numeric.value);
                         }
@@ -484,6 +498,8 @@ BOOST_FIXTURE_TEST_SUITE(s, F)
 
 BOOST_AUTO_TEST_CASE(eval_lexemes)
 {
+    using namespace std::string_literals;
+
     std::string input {"1"};
 
     auto result = ctx.eval(input);
@@ -497,12 +513,9 @@ BOOST_AUTO_TEST_CASE(eval_lexemes)
 
     std::string str {"\"hello, kaleidoscope!\""};
 
-    auto result2 = ctx.eval(input);
+    auto result2 = ctx.eval(str);
     BOOST_TEST(result2.has_value());
-    if (std::string *value = result2)
-    {
-        BOOST_TEST((*value == "hello, kaleidoscope!"));
-    }
+    BOOST_TEST((*result2.get_if<std::string>() == "hello, kaleidoscope!"s));
 }
 
 BOOST_AUTO_TEST_CASE(eval_operators)
