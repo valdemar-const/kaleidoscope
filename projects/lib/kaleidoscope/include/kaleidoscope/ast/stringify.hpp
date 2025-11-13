@@ -198,8 +198,14 @@ struct Stringify : public Visitor_Node_CRTP<Stringify, ast::Node>
                                         return (acc.empty()) ? name : acc + " " + name;
                                     }
                             );
+
+                    std::string init_str = (obj.init_expr) ? std::string(this->visit(*obj.init_expr).result()) : "";
+
                     std::string result {
-                            "(type " + std::string(this->visit(*obj.type).result()) + ") " + names
+                            "(type " + std::string(this->visit(*obj.type).result()) + ")"
+                            + " (" + names + ")"
+                            + ((!init_str.empty()) ? (" " + init_str)
+                                                   : "")
                     };
 
                     value = "(" + std::string((obj.is_mutable) ? "var" : "let") + " " + result + ")";

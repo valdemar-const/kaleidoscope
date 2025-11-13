@@ -353,7 +353,7 @@ BOOST_AUTO_TEST_CASE(parse_data_objects_definitions)
 {
     std::string defvar = R"KALEIDOSCOPE(
                 var num, num2 : int; # mutable
-                let num_: int; # immutable
+                let num_: int = 5; # immutable
                 1;
                 1 + -1;
                 !1;

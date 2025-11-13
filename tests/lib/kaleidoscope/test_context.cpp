@@ -530,6 +530,17 @@ BOOST_AUTO_TEST_CASE(eval_operators)
     BOOST_TEST((ctx.eval("1 + 1") == 2.0));
 }
 
+BOOST_AUTO_TEST_CASE(declare_variables)
+{
+    ctx.push_scope();
+    {
+        ctx.eval("var num: f64 = 5.0");
+
+        BOOST_TEST((ctx.eval("num") == 5.0));
+    }
+    ctx.pop_scope();
+}
+
 BOOST_AUTO_TEST_CASE(bind_callable)
 {
     // function foo(a: f64): f64;

@@ -343,16 +343,18 @@ struct Data_Object_Definition_List : public NodeCRTP<Data_Object_Definition_List
 
     ~Data_Object_Definition_List(void) override = default;
 
-    Data_Object_Definition_List(Names names, Mutability is_mutable = Immutable, Type type = {})
+    Data_Object_Definition_List(Names names, Mutability is_mutable = Immutable, Type type = {}, Init init_expr = {})
         : names(names)
         , is_mutable(is_mutable)
         , type(std::move(type))
+        , init_expr(std::move(init_expr))
     {
     }
 
     Names      names;
     Mutability is_mutable;
     Type       type;
+    Init       init_expr;
 };
 
 // TODO: to implement

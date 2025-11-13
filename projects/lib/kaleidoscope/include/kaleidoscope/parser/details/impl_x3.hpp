@@ -8,6 +8,17 @@
 
 #include <boost/spirit/home/x3.hpp>
 
+namespace kaleidoscope::parser
+{
+struct mutable_tag;
+
+struct var_decl_attr
+{
+    bool is_mutable = false;
+};
+
+} // namespace kaleidoscope::parser
+
 namespace kaleidoscope::parser::actions
 {
 using boost::fusion::at_c;
@@ -219,21 +230,22 @@ const auto type_decl_parsed = [](auto &ctx)
     _val(ctx).reset(new ast::Type_Declaration(_attr(ctx)));
 };
 
-const auto vars_parsed = [](auto &ctx)
+const auto make_mutable = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Data_Object_Definition_List(
-            std::move(at_c<0>(_attr(ctx))),
-            ast::Data_Object_Definition_List::Immutable,
-            std::move(at_c<1>(_attr(ctx)))
-    ));
+    boost::spirit::x3::get<mutable_tag>(ctx).is_mutable = true;
 };
 
-const auto var_mut_parsed = [](auto &ctx)
+const auto data_object_decl_parsed = [](auto &ctx)
 {
+    auto &attr = _attr(ctx); // fusion::deque<identifier_list, type_decl, optional<expr>>
+
     _val(ctx).reset(new ast::Data_Object_Definition_List(
-            std::move(at_c<0>(_attr(ctx))),
-            ast::Data_Object_Definition_List::Mutable,
-            std::move(at_c<1>(_attr(ctx)))
+            std::move(at_c<0>(attr)), // names
+            static_cast<ast::Data_Object_Definition_List::Mutability>(
+                    boost::spirit::x3::get<mutable_tag>(ctx).is_mutable
+            ),
+            std::move(at_c<1>(attr)), // type
+            at_c<2>(attr) ? std::move(*at_c<2>(attr)) : nullptr
     ));
 };
 
@@ -357,27 +369,34 @@ const auto op_null_coalescing   = mkop("?:"); // if a - nullable number, a?:0 ->
 const auto op_pipeline          = mkop("|>"); // chain call operator. a |> b(c) |> d -emit> d(b(a,c))
 const auto op_tap               = mkop("=>"); // tap to block
 
+const auto init_expr           = x3::lit("=") >> expr;
 const auto type_decl_def       = identifier[type_decl_parsed];
 const auto identifier_def      = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
 const auto identifier_list_def = (identifier % ',');
-const auto var                 = (kw_let >> identifier_list >> ":" >> type_decl)[vars_parsed];
-const auto var_mut             = (kw_var >> identifier_list >> ":" >> type_decl)[var_mut_parsed];
-const auto var_def_def         = var_mut | var;
-const auto fun_decl_def        = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
-const auto fun_block_def       = (expr[emplace_to_vec]) % ';';
-const auto fun_def_def         = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
-const auto fun_call_def        = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
-const auto variable_def        = identifier[variable_parsed];
-const auto number_def          = x3::double_[number_parsed];
-const auto string_def          = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
+const auto var_def_def =
+        x3::with<mutable_tag>(var_decl_attr {})[(
+                (kw_let | kw_var[make_mutable])
+                >> identifier_list
+                >> ":"
+                >> type_decl
+                >> -("=" >> expr)
+        )[data_object_decl_parsed]];
+const auto fun_decl_def  = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
+const auto fun_block_def = (expr[emplace_to_vec]) % ';';
+const auto fun_def_def   = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
+const auto fun_call_def  = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
+const auto variable_def  = identifier[variable_parsed];
+const auto number_def    = x3::double_[number_parsed];
+const auto string_def    = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
 
-const auto op  = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';' - ':' - '.')];
-const auto ops = +op;
+const auto op = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';' - ':' - '.')];
+
 const auto atom_def =
         (number
          | string)[variant_node_upcast];
 
-const auto expr_grouped_def = (x3::lit('(') >> expr >> ')')[node_upcast];
+const auto expr_grouped_def =
+        (x3::lit('(') >> expr >> ')')[node_upcast];
 
 const auto simple_def =
         (atom

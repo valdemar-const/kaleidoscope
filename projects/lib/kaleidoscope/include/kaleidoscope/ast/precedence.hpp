@@ -40,6 +40,7 @@ struct precedence : ast::utils::Visitor_Node_CRTP<precedence, kaleidoscope::ast:
     void visit_(const ast::Function_Defenition &ast);
     void visit_(const ast::Functional_Call &ast);
     void visit_(const ast::Precedence_Agnostic_Expr &ast);
+    void visit_(const ast::Data_Object_Definition_List &ast);
 
   private:
 
@@ -77,6 +78,9 @@ inline precedence::precedence(const Bin_Op_Precedence &precedence)
     );
     register_method_handler<ast::Precedence_Agnostic_Expr>(
             static_cast<void (precedence::*)(const ast::Precedence_Agnostic_Expr &)>(&precedence::visit_)
+    );
+    register_method_handler<ast::Data_Object_Definition_List>(
+            static_cast<void (precedence::*)(const ast::Data_Object_Definition_List &)>(&precedence::visit_)
     );
 }
 
@@ -174,6 +178,24 @@ precedence::visit_(const ast::Functional_Call &ast)
         {
             visit(*arg);
         }
+    }
+}
+
+inline void
+precedence::visit_(const ast::Data_Object_Definition_List &ast)
+{
+    if (!ast.init_expr)
+    {
+        return;
+    }
+
+    if (typeid(*ast.init_expr) == typeid(ast::Precedence_Agnostic_Expr))
+    {
+        const_cast<ast::Precedence_Agnostic_Expr::Expression &>(ast.init_expr).reset(visit(*ast.init_expr).result().release());
+    }
+    else
+    {
+        visit(*ast.init_expr);
     }
 }
 
