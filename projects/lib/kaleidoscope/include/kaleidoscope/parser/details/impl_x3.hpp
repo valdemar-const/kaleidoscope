@@ -57,7 +57,13 @@ const auto variant_node_upcast = [](auto &ctx)
 
 const auto number_parsed = [](auto &ctx)
 {
-    _val(ctx).reset(new ast::Literal_Numeric(_attr(ctx)));
+    boost::apply_visitor(
+            [&](const auto &number)
+            {
+                _val(ctx).reset(new ast::Literal_Numeric(ast::Literal_Numeric::Value {number}));
+            },
+            _attr(ctx)
+    );
 };
 
 const auto string_parsed = [](auto &ctx)
@@ -381,13 +387,13 @@ const auto var_def_def =
                 >> type_decl
                 >> -("=" >> expr)
         )[data_object_decl_parsed]];
-const auto fun_decl_def  = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
-const auto fun_block_def = (expr[emplace_to_vec]) % ';';
-const auto fun_def_def   = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
-const auto fun_call_def  = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
-const auto variable_def  = identifier[variable_parsed];
-const auto number_def    = x3::double_[number_parsed];
-const auto string_def    = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
+const auto fun_decl_def   = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
+const auto fun_block_def  = (expr[emplace_to_vec]) % ';';
+const auto fun_def_def    = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
+const auto fun_call_def   = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
+const auto variable_def   = (identifier >> !x3::lit('('))[variable_parsed];
+const auto number_def     = (x3::double_ | x3::long_long | x3::ulong_long)[number_parsed];
+const auto string_def     = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
 
 const auto op = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';' - ':' - '.')];
 
@@ -399,8 +405,8 @@ const auto expr_grouped_def =
         (x3::lit('(') >> expr >> ')')[node_upcast];
 
 const auto simple_def =
-        (atom
-         | fun_call
+        (fun_call
+         | atom
          | variable
          | expr_grouped)[variant_node_upcast];
 

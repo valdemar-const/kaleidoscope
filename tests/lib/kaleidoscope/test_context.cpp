@@ -549,13 +549,13 @@ BOOST_AUTO_TEST_CASE(bind_callable)
         return a * a;
     };
     // function foo(a: i32): i32;
-    ctx["foo"] = [](int a) -> int
+    ctx["foo"] = [](int64_t a) -> int64_t
     {
         return a * 2;
     };
 
     BOOST_TEST((ctx.eval("foo(4.0)") == 16.0));
-    BOOST_TEST((ctx.eval("foo(4)") == 8));
+    BOOST_TEST((ctx.eval("foo(4)") == 8LL));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

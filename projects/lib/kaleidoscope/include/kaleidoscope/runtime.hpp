@@ -172,6 +172,7 @@ struct runtime::eval_node : public ast::utils::Visitor_Node_CRTP<eval_node, ast:
     void visit_(const ast::Operation_Prefix &node);
     void visit_(const ast::Operation_Infix &node);
     void visit_(const ast::Functional_Call &node);
+    void visit_(const ast::Data_Object_Definition_List &node);
 
   protected:
 
@@ -237,6 +238,10 @@ inline runtime::eval_node::eval_node(runtime &owner)
 
     register_method_handler<ast::Operation_Prefix>(
             static_cast<void (runtime::eval_node::*)(const ast::Operation_Prefix &)>(&runtime::eval_node::visit_)
+    );
+
+    register_method_handler<ast::Data_Object_Definition_List>(
+            static_cast<void (runtime::eval_node::*)(const ast::Data_Object_Definition_List &node)>(&runtime::eval_node::visit_)
     );
 }
 
@@ -399,6 +404,42 @@ runtime::eval_node::visit_(const ast::Operation_Prefix &node)
     args.emplace_back(eval(*node.operand));
 
     result_ = std::any_cast<double>(func(std::move(args)));
+}
+
+inline void
+runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
+{
+    using namespace std::string_literals;
+
+    std::any init_value; // type default value
+    bool     is_calc_type_from_value_expression = false;
+
+    if (node.type)
+    {
+        if (auto type_ = dynamic_cast<ast::Type_Declaration *>(node.type.get()))
+        {
+            type_->name;
+        }
+    }
+    else
+    {
+        is_calc_type_from_value_expression = true;
+    }
+
+    if (node.init_expr)
+    {
+        init_value = eval(*node.init_expr).unwrap();
+    }
+
+    for (const auto &name : node.names)
+    {
+        owner_.get().scope().bind_var(
+                name,
+                init_value
+        );
+    }
+
+    result_ = runtime::result {}; // var declaration not return value
 }
 
 } // namespace kaleidoscope

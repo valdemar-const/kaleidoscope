@@ -27,12 +27,14 @@ struct Module
 {
     struct Symbol; // forward decl
 
-    enum class Function_Filter
+    enum class Symbol_Filter
     {
         Any,
+        Type,
         Func,
-        BinOp,
-        UnOp
+        Infix,
+        Prefix,
+        Postfix
     };
 
     struct operator_properties
@@ -252,12 +254,60 @@ struct Module
         std::any            data_;
     };
 
+    struct Type
+    {
+        using type = std::function<std::any(std::vector<std::any>)>;
+
+        template<typename T>
+            requires(std::is_copy_constructible_v<T> && std::is_default_constructible_v<T> && !std::is_same_v<std::any, std::decay_t<T>>)
+        static Type
+        make_type(std::optional<std::decay_t<T>> default_ = std::nullopt)
+        {
+            using TypePure = std::decay_t<T>;
+            return Type {
+                    .default_value_ = [value_ = default_.value_or(TypePure {})](std::vector<std::any>) -> std::any &
+                    {
+                        return value_;
+                    },
+                    .type_id_ = typeid(TypePure)
+            };
+        }
+
+      private:
+
+        Type(void) = default;
+
+      public:
+
+        Type(const Type &)            = default;
+        Type(Type &&)                 = default;
+        Type &operator=(const Type &) = default;
+        Type &operator=(Type &&)      = default;
+
+        std::any
+        value(void) const
+        {
+            return default_value_;
+        }
+
+        std::any &
+        data(void)
+        {
+            return default_value_;
+        }
+
+      protected:
+
+        std::any        default_value_;
+        std::type_index type_id_;
+    };
+
     using precedence  = std::unordered_map<std::string, operator_properties>;
     using Symbol_Name = std::string;
 
     struct Symbol
     {
-        using Object = std::variant<Data_Object, Functional, Operator>;
+        using Object = std::variant<Data_Object, Functional, Operator, Type>;
 
         Symbol(Object value)
             : obj_(value)
@@ -363,7 +413,7 @@ struct Module
     get_func(const std::string &name)
     {
         using namespace std::string_literals;
-        auto res = find_symbol(name, Function_Filter::Func);
+        auto res = find_symbol(name, Symbol_Filter::Func);
 
         if (res.has_value())
         {
@@ -386,7 +436,7 @@ struct Module
     get_binop(const std::string &name)
     {
         using namespace std::string_literals;
-        auto res = find_symbol(name, Function_Filter::BinOp);
+        auto res = find_symbol(name, Symbol_Filter::Infix);
 
         if (res.has_value())
         {
@@ -409,7 +459,7 @@ struct Module
     get_unop(const std::string &name)
     {
         using namespace std::string_literals;
-        auto res = find_symbol(name, Function_Filter::UnOp);
+        auto res = find_symbol(name, Symbol_Filter::Prefix);
 
         if (res.has_value())
         {
@@ -468,16 +518,16 @@ struct Module
     }
 
     std::optional<std::reference_wrapper<const Symbol>>
-    find_symbol(std::string name, Function_Filter filter_by = Function_Filter::Any) const
+    find_symbol(std::string name, Symbol_Filter filter_by = Symbol_Filter::Any) const
     {
         using Result = std::optional<std::reference_wrapper<const Symbol>>;
         using namespace std::string_literals;
 
         Result result;
 
-        bool is_search_for_func  = (Function_Filter::Any == filter_by) || (Function_Filter::Func == filter_by);
-        bool is_search_for_unop  = (Function_Filter::Any == filter_by) || (Function_Filter::UnOp == filter_by);
-        bool is_search_for_binop = (Function_Filter::Any == filter_by) || (Function_Filter::BinOp == filter_by);
+        bool is_search_for_func  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Func == filter_by);
+        bool is_search_for_unop  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Prefix == filter_by);
+        bool is_search_for_binop = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Infix == filter_by);
 
         if (is_search_for_func && identifiers.count(name))
         {
@@ -560,14 +610,34 @@ struct Module
         return *this;
     }
 
+    template<traits::Type_Basic_Scalar T>
     Module &
-    bind_var(std::string name, double value)
+    bind_var(std::string name, T &&value)
     {
         identifiers.insert_or_assign(
                 name,
                 Symbol {
                         Functional {
-                                [=](std::vector<std::any> args) -> std::any
+                                [value = std::forward<T>(value)](std::vector<std::any> args) -> std::any
+                                {
+                                    return value;
+                                }
+                        }
+                }
+        );
+        return *this;
+    }
+
+    template<typename Any>
+    Module &
+    bind_var(std::string name, Any &&value)
+        requires std::same_as<std::decay_t<Any>, std::any>
+    {
+        identifiers.insert_or_assign(
+                name,
+                Symbol {
+                        Functional {
+                                [value = std::forward<Any>(value)](std::vector<std::any> args) -> std::any
                                 {
                                     return value;
                                 }
