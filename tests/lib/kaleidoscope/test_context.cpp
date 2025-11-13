@@ -67,9 +67,29 @@ struct F
         using Kind          = kaleidoscope::Module::operator_properties::Kind;
         using Associativity = kaleidoscope::Module::operator_properties::Associativity;
 
+        ctx.get_rt()
+                .register_ast_promotion<kaleidoscope::ast::Literal_Numeric>(
+                        [](const kaleidoscope::ast::Literal_Numeric &numeric) -> std::any
+                        {
+                            return std::visit([](const auto &v) -> std::any
+                                              {
+                                                  return v;
+                                              },
+                                              numeric.value);
+                        }
+                )
+                .register_ast_promotion<kaleidoscope::ast::Literal_String>(
+                        [](const kaleidoscope::ast::Literal_String &str) -> std::string
+                        {
+                            return str.value;
+                        }
+                );
+
+        ctx.register_type<bool>("bool");
         ctx.register_type<int64_t>("i64");
         ctx.register_type<uint64_t>("u64");
         ctx.register_type<double>("f64");
+        // ctx.register_type<std::string>("string");
 
         Module context;
         // script::core

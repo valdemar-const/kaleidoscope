@@ -4,8 +4,10 @@
 #include <kaleidoscope/ast.hpp>
 
 #include <kaleidoscope/ast/visitor.hpp>
-#include <numeric>
 
+#include <compiler/demangle.hpp>
+
+#include <numeric>
 #include <any>
 #include <optional>
 #include <list>
@@ -140,6 +142,11 @@ struct runtime
         return *ast_promotion_;
     }
 
+    template<typename T, traits::Type_Callable F>
+        requires(std::is_base_of_v<ast::Node, std::decay_t<T>>)
+    runtime &
+    register_ast_promotion(F &&handler);
+
   protected:
 
     std::unique_ptr<eval_node>                   eval_;
@@ -179,6 +186,10 @@ struct runtime::ast_promotion : public ast::utils::Visitor_Node_CRTP<ast_promoti
 
     runtime::result promote(const Ast &ast);
     runtime::result promote(const ast::Node &node);
+
+    template<typename T, traits::Type_Callable F>
+        requires(std::is_base_of_v<ast::Node, std::decay_t<T>>)
+    ast_promotion &register_promotion(F &&handler);
 
   protected:
 
@@ -312,7 +323,7 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
     auto declaration = std::accumulate(
             sign.cbegin(), sign.cend(), std::string {}, [](auto acc, auto &&elem)
             {
-                return (acc.empty()) ? elem.name() : acc + ", " + elem.name();
+                return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
             }
     );
 
@@ -498,6 +509,16 @@ runtime::pop_scope(void)
     return *this;
 }
 
+template<typename T, traits::Type_Callable F>
+    requires(std::is_base_of_v<ast::Node, std::decay_t<T>>)
+runtime &
+runtime::register_ast_promotion(F &&handler)
+{
+    ast_promotion_->register_promotion<T>(std::forward<F>(handler));
+
+    return *this;
+}
+
 } // namespace kaleidoscope
 
 namespace kaleidoscope
@@ -506,6 +527,7 @@ namespace kaleidoscope
 inline runtime::ast_promotion::ast_promotion(runtime &owner)
     : owner_(owner)
 {
+#if 0
     register_method_handler<ast::Literal_Numeric>(
             static_cast<void (runtime::ast_promotion::*)(const ast::Literal_Numeric &)>(&runtime::ast_promotion::visit_)
     );
@@ -513,6 +535,7 @@ inline runtime::ast_promotion::ast_promotion(runtime &owner)
     register_method_handler<ast::Literal_String>(
             static_cast<void (runtime::ast_promotion::*)(const ast::Literal_String &)>(&runtime::ast_promotion::visit_)
     );
+#endif
 }
 
 inline runtime::result
@@ -530,6 +553,23 @@ runtime::ast_promotion::promote(const ast::Node &node)
 {
     visit(node);
     return result_;
+}
+
+template<typename T, traits::Type_Callable F>
+    requires(std::is_base_of_v<ast::Node, std::decay_t<T>>)
+inline runtime::ast_promotion &
+runtime::ast_promotion::register_promotion(F &&handler)
+{
+    using Node = std::decay_t<T>;
+
+    register_handler<Node>(
+            [this, f = std::forward<F>(handler)](const Node &node)
+            {
+                result_ = f(node);
+            }
+    );
+
+    return *this;
 }
 
 inline void

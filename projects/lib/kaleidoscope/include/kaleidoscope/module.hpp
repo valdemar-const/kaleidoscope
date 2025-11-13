@@ -2,6 +2,7 @@
 
 #include <kaleidoscope/ast.hpp>
 #include <kaleidoscope/type_info.hpp>
+#include <compiler/demangle.hpp>
 
 #include <map>
 #include <unordered_map>
@@ -530,7 +531,7 @@ struct Module
         auto declaration = std::accumulate(
                 signature.args.cbegin(), signature.args.cend(), std::string {}, [](auto acc, auto &&elem)
                 {
-                    return (acc.empty()) ? elem.name() : acc + ", " + elem.name();
+                    return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
                 }
         );
 

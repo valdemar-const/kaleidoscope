@@ -24,7 +24,14 @@ to_string<Literal_Numeric>(const Literal_Numeric &node)
     std::visit(
             [&](auto &&v)
             {
-                result = std::format("{:g}", v);
+                if constexpr (std::is_floating_point_v<std::decay_t<decltype(v)>>)
+                {
+                    result = std::format("{:g}", v);
+                }
+                else
+                {
+                    result = std::format("{}", v);
+                }
             },
             node.value
     );

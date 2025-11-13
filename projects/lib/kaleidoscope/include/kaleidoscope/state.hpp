@@ -116,6 +116,12 @@ struct state
 
   public:
 
+    runtime &
+    get_rt(void)
+    {
+        return runtime_;
+    }
+
     template<typename F>
     state &
     add_operator(std::string name, operator_properties props, F impl)
