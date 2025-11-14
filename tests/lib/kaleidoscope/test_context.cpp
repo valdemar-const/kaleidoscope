@@ -535,8 +535,10 @@ BOOST_AUTO_TEST_CASE(declare_variables)
     ctx.push_scope();
     {
         ctx.eval("var num: f64 = 5.0");
-
         BOOST_TEST((ctx.eval("num") == 5.0));
+
+        ctx.eval("var num_2: f64");
+        BOOST_TEST((ctx.eval("num_2") == 0.0));
     }
     ctx.pop_scope();
 }

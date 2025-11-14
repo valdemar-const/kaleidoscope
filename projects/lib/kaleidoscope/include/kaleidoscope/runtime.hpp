@@ -418,7 +418,8 @@ runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
     {
         if (auto type_ = dynamic_cast<ast::Type_Declaration *>(node.type.get()))
         {
-            type_->name;
+            auto &default_value = owner_.get().scope().get_type(type_->name);
+            init_value          = default_value({});
         }
     }
     else
@@ -428,7 +429,16 @@ runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
 
     if (node.init_expr)
     {
-        init_value = eval(*node.init_expr).unwrap();
+        auto expr_value = eval(*node.init_expr).unwrap();
+
+        if (expr_value.type() == init_value.type())
+        {
+            init_value = std::move(expr_value);
+        }
+        else
+        {
+            throw std::runtime_error("Initialization value has incompatible type!");
+        }
     }
 
     for (const auto &name : node.names)

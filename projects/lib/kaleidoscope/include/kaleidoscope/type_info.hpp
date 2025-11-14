@@ -249,8 +249,7 @@ namespace kaleidoscope
 namespace traits
 {
     template<typename T>
-    concept Type_Basic_Scalar = std::is_fundamental_v<T>
-                             && std::is_scalar_v<T>
+    concept Type_Basic_Scalar = std::is_fundamental_v<T> && std::is_scalar_v<T>
                              && !std::is_pointer_v<T>
                              && !std::is_array_v<T>;
 

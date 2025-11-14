@@ -261,23 +261,13 @@ struct Module
         template<typename T>
             requires(std::is_copy_constructible_v<T> && std::is_default_constructible_v<T> && !std::is_same_v<std::any, std::decay_t<T>>)
         static Type
-        make_type(std::optional<std::decay_t<T>> default_ = std::nullopt)
+        make_type(std::optional<std::decay_t<T>> default_ = std::nullopt);
+
+        Type(type default_value, std::type_index type_id)
+            : default_value_(std::move(default_value))
+            , type_id_(type_id)
         {
-            using TypePure = std::decay_t<T>;
-            return Type {
-                    .default_value_ = [value_ = default_.value_or(TypePure {})](std::vector<std::any>) -> std::any &
-                    {
-                        return value_;
-                    },
-                    .type_id_ = typeid(TypePure)
-            };
         }
-
-      private:
-
-        Type(void) = default;
-
-      public:
 
         Type(const Type &)            = default;
         Type(Type &&)                 = default;
@@ -287,19 +277,32 @@ struct Module
         std::any
         value(void) const
         {
-            return default_value_;
+            return get_default_cached_();
         }
 
-        std::any &
-        data(void)
+        const std::any &
+        data(void) const
         {
-            return default_value_;
+            return get_default_cached_();
         }
 
       protected:
 
-        std::any        default_value_;
-        std::type_index type_id_;
+        std::any &
+        get_default_cached_(void) const
+        {
+            if (!default_cache_.has_value())
+            {
+                default_cache_ = default_value_({});
+            }
+            return default_cache_;
+        }
+
+      protected:
+
+        type             default_value_;
+        std::type_index  type_id_;
+        mutable std::any default_cache_;
     };
 
     using precedence  = std::unordered_map<std::string, operator_properties>;
@@ -366,6 +369,8 @@ struct Module
         linked.push_front(std::ref(m));
     }
 
+  public:
+
     precedence
     collect_operators_info(void) const
     {
@@ -409,6 +414,31 @@ struct Module
         return *result;
     }
 
+  public:
+
+    const Type::type &
+    get_type(const std::string &name)
+    {
+        using namespace std::string_literals;
+        auto res = find_symbol(name, Symbol_Filter::Type);
+
+        if (res.has_value())
+        {
+            if (auto sym = std::get_if<Type>(&res.value().get().variant()))
+            {
+                return *std::any_cast<Type::type>(&sym->data());
+            }
+            else
+            {
+                throw std::runtime_error("Symbol "s + name + " is not a type");
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Symbol "s + name + " is undefined");
+        }
+    }
+
     const Functional::type &
     get_func(const std::string &name)
     {
@@ -430,7 +460,7 @@ struct Module
         {
             throw std::runtime_error("Symbol "s + name + " is undefined");
         }
-    };
+    }
 
     const Functional::type &
     get_binop(const std::string &name)
@@ -453,7 +483,7 @@ struct Module
         {
             throw std::runtime_error("Symbol "s + name + " is undefined");
         }
-    };
+    }
 
     const Functional::type &
     get_unop(const std::string &name)
@@ -476,7 +506,7 @@ struct Module
         {
             throw std::runtime_error("Symbol "s + name + " is undefined");
         }
-    };
+    }
 
     std::optional<std::reference_wrapper<const Functional::type>>
     get_overload(std::string name, const Functional::args &arg_types) const
@@ -528,8 +558,13 @@ struct Module
         bool is_search_for_func  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Func == filter_by);
         bool is_search_for_unop  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Prefix == filter_by);
         bool is_search_for_binop = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Infix == filter_by);
+        bool is_search_for_type  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Type == filter_by);
 
-        if (is_search_for_func && identifiers.count(name))
+        if (is_search_for_type && types.count(name))
+        {
+            result.emplace(types.at(name));
+        }
+        else if (is_search_for_func && identifiers.count(name))
         {
             result.emplace(identifiers.at(name));
         }
@@ -562,6 +597,16 @@ struct Module
         }
 
         return result;
+    }
+
+  public:
+
+    template<traits::Type_Basic_Scalar T>
+    Module &
+    bind_type(std::string name)
+    {
+        types.insert_or_assign(name, Symbol {Type::make_type<T>()});
+        return *this;
     }
 
     Module &
@@ -662,6 +707,8 @@ struct Module
         return *this;
     }
 
+  public:
+
     void
     clear(void)
     {
@@ -673,13 +720,42 @@ struct Module
 
   protected:
 
-    std::unordered_map<Symbol_Name, type::Info> types;
-    std::unordered_map<Symbol_Name, Symbol>     identifiers;
-    std::unordered_map<Symbol_Name, Symbol>     unary_ops;
-    std::unordered_map<Symbol_Name, Symbol>     binary_ops;
-    std::unordered_map<Symbol_Name, Overloads>  overloads;
+    std::unordered_map<Symbol_Name, Symbol>    types;
+    std::unordered_map<Symbol_Name, Symbol>    identifiers;
+    std::unordered_map<Symbol_Name, Symbol>    unary_ops;
+    std::unordered_map<Symbol_Name, Symbol>    binary_ops;
+    std::unordered_map<Symbol_Name, Overloads> overloads;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };
+
+template<typename T>
+    requires(std::is_copy_constructible_v<T> && std::is_default_constructible_v<T> && !std::is_same_v<std::any, std::decay_t<T>>)
+inline Module::Type
+Module::Type::make_type(std::optional<std::decay_t<T>> default_)
+{
+    using TypePure = std::decay_t<T>;
+
+    TypePure init_value;
+
+    if constexpr (std::is_integral_v<TypePure>)
+    {
+        init_value = default_.value_or(TypePure {0});
+    }
+    else
+    {
+        init_value = default_.value_or(TypePure {});
+    }
+
+    Type::type initializer = [value_ = std::any(init_value)](std::vector<std::any>) -> std::any
+    {
+        return value_;
+    };
+
+    return Type {
+            std::move(initializer),
+            std::type_index {typeid(TypePure)}
+    };
+}
 
 } // namespace kaleidoscope

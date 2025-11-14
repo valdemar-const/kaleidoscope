@@ -95,7 +95,6 @@ struct state
 
     state(void)
         : global_()
-        , types_(global_)
         , runtime_(global_)
     {
     }
@@ -141,7 +140,7 @@ struct state
     state &
     register_type(std::string_view name)
     {
-        types_.register_type<T>(name);
+        runtime_.scope().bind_type<T>(name.data());
 
         return *this;
     }
@@ -223,7 +222,6 @@ struct state
 
   protected:
 
-    Type_Registry     types_;
     Module            global_;
     runtime           runtime_;
     Ast               state_body_;
