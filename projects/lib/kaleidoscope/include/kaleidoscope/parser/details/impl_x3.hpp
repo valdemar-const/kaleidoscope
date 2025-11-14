@@ -5,6 +5,8 @@
 
 #include <numeric>
 #include <iostream>
+#include <variant>
+#include <type_traits>
 
 #include <boost/spirit/home/x3.hpp>
 
@@ -53,6 +55,46 @@ const auto variant_node_upcast = [](auto &ctx)
             },
             _attr(ctx)
     );
+};
+
+const auto number_lit_parsed = [](auto &ctx)
+{
+    using AttrZero            = char;
+    using AttrFirstNum        = char;
+    using AttrDot             = char;
+    using AttrIntegralNumbers = std::string;
+    using AttrFloatingPart    = boost::fusion::deque<AttrDot, std::string>;
+    using AttrNumeric         = boost::fusion::deque<AttrFirstNum, AttrIntegralNumbers, boost::optional<AttrFloatingPart>>;
+    using Attr                = boost::variant<AttrZero, AttrNumeric>;
+
+    auto &numeric = _attr(ctx);
+    static_assert(std::is_same_v<std::decay_t<decltype(numeric)>, Attr>, "bad attr");
+
+    if (numeric.which() == 0)
+    {
+        _val(ctx) = std::make_unique<ast::Literal_Numeric>(0LL);
+    }
+    else if (auto parsed_ptr = boost::get<AttrNumeric>(&numeric))
+    {
+        auto &parsed = *parsed_ptr;
+
+        auto [first_digit, other_digits, float_part] = std::make_tuple(at_c<0>(parsed), at_c<1>(parsed), at_c<2>(parsed));
+
+        std::string number_str = std::string(1, first_digit) + other_digits;
+
+        if (float_part.has_value())
+        {
+            auto [dot, float_digits]  = std::make_tuple(at_c<0>(*float_part), at_c<1>(*float_part));
+            number_str               += dot + float_digits;
+            double value              = std::stod(number_str);
+            _val(ctx)                 = std::make_unique<ast::Literal_Numeric>(value);
+        }
+        else
+        {
+            int64_t value = std::stoll(number_str);
+            _val(ctx)     = std::make_unique<ast::Literal_Numeric>(value);
+        }
+    }
 };
 
 const auto number_parsed = [](auto &ctx)
@@ -387,13 +429,16 @@ const auto var_def_def =
                 >> type_decl
                 >> -("=" >> expr)
         )[data_object_decl_parsed]];
-const auto fun_decl_def   = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
-const auto fun_block_def  = (expr[emplace_to_vec]) % ';';
-const auto fun_def_def    = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
-const auto fun_call_def   = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
-const auto variable_def   = (identifier >> !x3::lit('('))[variable_parsed];
-const auto number_def     = (x3::double_ | x3::long_long | x3::ulong_long)[number_parsed];
-const auto string_def     = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
+const auto fun_decl_def  = (kw_function >> identifier >> '(' >> identifier_list >> ')')[fun_decl_parsed];
+const auto fun_block_def = (expr[emplace_to_vec]) % ';';
+const auto fun_def_def   = (fun_decl >> fun_block >> kw_end)[fun_def_parsed];
+const auto fun_call_def  = (identifier >> '(' >> -expr_list >> ')')[fun_call_parsed];
+const auto variable_def  = (identifier >> !x3::lit('('))[variable_parsed];
+const auto number_zero   = x3::char_('0') >> !(x3::digit | x3::char_('.'));
+const auto numeric_float = x3::lexeme[x3::char_('.') >> *x3::digit];
+const auto numeric_dec   = x3::lexeme[((x3::digit - '0') >> *x3::digit) >> -numeric_float];
+const auto number_def    = (number_zero | numeric_dec)[number_lit_parsed];
+const auto string_def    = x3::lexeme[x3::lit('\"') >> *(x3::char_ - '\"') >> "\""][string_parsed];
 
 const auto op = x3::lexeme[!identifier >> +(x3::char_ - x3::space - x3::digit - x3::alpha - '(' - ')' - ',' - '"' - '\'' - '\\' - ';' - ':' - '.')];
 
