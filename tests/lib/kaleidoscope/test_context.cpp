@@ -103,12 +103,14 @@ struct F
         ctx.register_type<int64_t>("i64");
         ctx.register_type<uint64_t>("u64");
         ctx.register_type<double>("f64");
-        // ctx.register_type<std::string>("string");
+        ctx.register_type<std::string>("string");
 
         Module context;
         // script::core
 
         // - unary ops:
+
+        
 
         context.bind_op(
                 "+",

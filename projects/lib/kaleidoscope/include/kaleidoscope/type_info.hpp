@@ -243,23 +243,6 @@ struct Sum final : public Layout
 
 } // namespace kaleidoscope::type::memory
 
-namespace kaleidoscope
-{
-
-namespace traits
-{
-    template<typename T>
-    concept Type_Basic_Scalar = std::is_fundamental_v<T> && std::is_scalar_v<T>
-                             && !std::is_pointer_v<T>
-                             && !std::is_array_v<T>;
-
-    template<typename T>
-    concept Type_Callable =
-            std::is_function_v<T> || std::is_invocable_v<T>
-            || requires(T t) { &std::decay_t<T>::operator(); };
-} // namespace traits
-} // namespace kaleidoscope
-
 namespace kaleidoscope::type
 {
 

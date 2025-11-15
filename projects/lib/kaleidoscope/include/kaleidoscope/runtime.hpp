@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kaleidoscope/module.hpp>
+#include <kaleidoscope/type_traits.hpp>
 #include <kaleidoscope/ast.hpp>
 
 #include <kaleidoscope/ast/visitor.hpp>

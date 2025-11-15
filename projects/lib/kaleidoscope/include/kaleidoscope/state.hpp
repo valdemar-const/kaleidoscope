@@ -6,7 +6,6 @@
 
 #include <kaleidoscope/module.hpp>
 #include <kaleidoscope/runtime.hpp>
-#include <kaleidoscope/type_registry.hpp>
 
 #include <unordered_map>
 #include <span>

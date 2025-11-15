@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kaleidoscope/ast.hpp>
-#include <kaleidoscope/type_info.hpp>
+#include <kaleidoscope/type_traits.hpp>
 #include <compiler/demangle.hpp>
 
 #include <map>
@@ -228,6 +228,46 @@ struct Module
         {
         }
 
+        template<traits::Type_Callable T>
+        Operator(operator_properties properties, T &&body)
+            : props_(properties)
+        {
+            type body_ = [callable = std::forward<T>(body)](std::vector<std::any> args) -> std::any
+            {
+                using Callable         = std::decay_t<T>;
+                using Args             = boost::callable_traits::args_t<Callable>;
+                using Result           = boost::callable_traits::return_type_t<Callable>;
+                constexpr size_t arity = std::tuple_size_v<Args>;
+
+                // Проверяем количество аргументов
+                if (args.size() != arity)
+                {
+                    throw std::runtime_error("Argument count mismatch");
+                }
+
+                // Распаковываем аргументы из std::any в кортеж
+                auto unpacked_args = [&]<size_t... I>(std::index_sequence<I...>)
+                {
+                    return std::make_tuple(
+                            std::any_cast<std::tuple_element_t<I, Args>>(args[I])...
+                    );
+                }(std::make_index_sequence<arity> {});
+
+                // Вызываем функцию с распакованными аргументами
+                if constexpr (std::is_void_v<Result>)
+                {
+                    std::apply(callable, unpacked_args);
+                    return std::any {};
+                }
+                else
+                {
+                    return std::apply(callable, unpacked_args);
+                }
+            };
+
+            data_ = std::move(body_);
+        }
+
         Operator(const Operator &)            = default;
         Operator(Operator &&)                 = default;
         Operator &operator=(const Operator &) = default;
@@ -258,8 +298,7 @@ struct Module
     {
         using type = std::function<std::any(std::vector<std::any>)>;
 
-        template<typename T>
-            requires(std::is_copy_constructible_v<T> && std::is_default_constructible_v<T> && !std::is_same_v<std::any, std::decay_t<T>>)
+        template<traits::Type_Object_Value_Semantic T>
         static Type
         make_type(std::optional<std::decay_t<T>> default_ = std::nullopt);
 
@@ -359,7 +398,7 @@ struct Module
     link_static(const Module &m)
     {
         identifiers.insert(m.identifiers.begin(), m.identifiers.end());
-        unary_ops.insert(m.unary_ops.begin(), m.unary_ops.end());
+        prefix_ops.insert(m.prefix_ops.begin(), m.prefix_ops.end());
         binary_ops.insert(m.binary_ops.begin(), m.binary_ops.end());
     }
 
@@ -568,9 +607,9 @@ struct Module
         {
             result.emplace(identifiers.at(name));
         }
-        else if (is_search_for_unop && unary_ops.count(name))
+        else if (is_search_for_unop && prefix_ops.count(name))
         {
-            result.emplace(unary_ops.at(name));
+            result.emplace(prefix_ops.at(name));
         }
         else if (is_search_for_binop && binary_ops.count(name))
         {
@@ -601,7 +640,7 @@ struct Module
 
   public:
 
-    template<traits::Type_Basic_Scalar T>
+    template<traits::Type_Object_Value_Semantic T>
     Module &
     bind_type(std::string name)
     {
@@ -701,7 +740,7 @@ struct Module
         }
         else // if (operator_properties::Kind::Prefix == value.props().kind)
         {
-            unary_ops.emplace(name, value);
+            prefix_ops.emplace(name, value);
         }
 
         return *this;
@@ -712,8 +751,9 @@ struct Module
     void
     clear(void)
     {
+        types.clear();
         identifiers.clear();
-        unary_ops.clear();
+        prefix_ops.clear();
         binary_ops.clear();
         linked.clear();
     }
@@ -722,15 +762,14 @@ struct Module
 
     std::unordered_map<Symbol_Name, Symbol>    types;
     std::unordered_map<Symbol_Name, Symbol>    identifiers;
-    std::unordered_map<Symbol_Name, Symbol>    unary_ops;
+    std::unordered_map<Symbol_Name, Symbol>    prefix_ops;
     std::unordered_map<Symbol_Name, Symbol>    binary_ops;
     std::unordered_map<Symbol_Name, Overloads> overloads;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };
 
-template<typename T>
-    requires(std::is_copy_constructible_v<T> && std::is_default_constructible_v<T> && !std::is_same_v<std::any, std::decay_t<T>>)
+template<traits::Type_Object_Value_Semantic T>
 inline Module::Type
 Module::Type::make_type(std::optional<std::decay_t<T>> default_)
 {
