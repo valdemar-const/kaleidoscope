@@ -239,7 +239,7 @@ precedence::visit_(const ast::Precedence_Agnostic_Expr &ast)
             auto &top_info = precedence_.get().at(ops.back());
 
             if (top_info.precedence < curr_info.precedence
-                || (top_info.precedence == curr_info.precedence && top_info.associativity == Module::operator_properties::Associativity::Left))
+                || (top_info.precedence == curr_info.precedence && top_info.associativity == Module::Operator_Properties::Associativity::Left))
             {
                 output.emplace_back(ops.back());
                 ops.pop_back();

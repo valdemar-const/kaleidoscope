@@ -16,15 +16,15 @@ main(int argc, const char *argv[])
 {
     using namespace kaleidoscope::ast::utils;
     using namespace std::string_literals;
-    using Kind          = kaleidoscope::state::operator_properties::Kind;
-    using Associativity = kaleidoscope::state::operator_properties::Associativity;
+    using Kind          = kaleidoscope::state::Operator_Properties::Kind;
+    using Associativity = kaleidoscope::state::Operator_Properties::Associativity;
 
     // Given
 
     const precedence::Bin_Op_Precedence operators = {
             std::make_pair(
                     "**",
-                    kaleidoscope::state::operator_properties {
+                    kaleidoscope::state::Operator_Properties {
                             .kind          = Kind::Infix,
                             .associativity = Associativity::Right,
                             .precedence    = 0
@@ -32,7 +32,7 @@ main(int argc, const char *argv[])
             ),
             std::make_pair(
                     "*",
-                    kaleidoscope::state::operator_properties {
+                    kaleidoscope::state::Operator_Properties {
                             .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 10
@@ -40,7 +40,7 @@ main(int argc, const char *argv[])
             ),
             std::make_pair(
                     "/",
-                    kaleidoscope::state::operator_properties {
+                    kaleidoscope::state::Operator_Properties {
                             .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 10
@@ -48,7 +48,7 @@ main(int argc, const char *argv[])
             ),
             std::make_pair(
                     "+",
-                    kaleidoscope::state::operator_properties {
+                    kaleidoscope::state::Operator_Properties {
                             .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 20
@@ -56,7 +56,7 @@ main(int argc, const char *argv[])
             ),
             std::make_pair(
                     "-",
-                    kaleidoscope::state::operator_properties {
+                    kaleidoscope::state::Operator_Properties {
                             .kind          = Kind::Infix,
                             .associativity = Associativity::Left,
                             .precedence    = 20

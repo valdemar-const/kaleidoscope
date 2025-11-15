@@ -23,8 +23,8 @@
 
 using namespace kaleidoscope::ast::utils;
 using namespace std::string_literals;
-using Kind          = kaleidoscope::state::operator_properties::Kind;
-using Associativity = kaleidoscope::state::operator_properties::Associativity;
+using Kind          = kaleidoscope::state::Operator_Properties::Kind;
+using Associativity = kaleidoscope::state::Operator_Properties::Associativity;
 
 struct F
 {
@@ -64,8 +64,14 @@ struct F
     {
         using namespace std::string_literals;
         using namespace kaleidoscope;
-        using Kind          = kaleidoscope::Module::operator_properties::Kind;
-        using Associativity = kaleidoscope::Module::operator_properties::Associativity;
+        using Kind          = kaleidoscope::Module::Operator_Properties::Kind;
+        using Associativity = kaleidoscope::Module::Operator_Properties::Associativity;
+
+        ctx.register_type<bool>("bool");
+        ctx.register_type<int64_t>("i64");
+        ctx.register_type<uint64_t>("u64");
+        ctx.register_type<double>("f64");
+        ctx.register_type<std::string>("string");
 
         ctx.get_rt()
                 .register_ast_promotion<kaleidoscope::ast::Literal_Numeric>(
@@ -99,18 +105,10 @@ struct F
                         }
                 );
 
-        ctx.register_type<bool>("bool");
-        ctx.register_type<int64_t>("i64");
-        ctx.register_type<uint64_t>("u64");
-        ctx.register_type<double>("f64");
-        ctx.register_type<std::string>("string");
-
         Module context;
         // script::core
 
         // - unary ops:
-
-        
 
         context.bind_op(
                 "+",

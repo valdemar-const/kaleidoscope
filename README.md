@@ -59,10 +59,10 @@ type i32 {.ordinal, internal.}; # declaration of embedded type
 
 # priority less is most.
 
-operator`+`(lhs: i32, rhs: i32): i32 {. internal, priority=20, associativity=left .}; # implementations internals
-operator`-`(lhs: i32, rhs: i32): i32 {. internal, priority=20, associativity=left .}; # implementations internals
-operator`*`(lhs: i32, rhs: i32): i32 {. internal, priority=10, associativity=left .}; # implementations internals
-operator`/`(lhs: i32, rhs: i32): i32 {. internal, priority=10, associativity=left .}; # implementations internals
+infix `+`(lhs: i32, rhs: i32): i32 {. internal, priority=20, associativity=left .}; # implementations internals
+infix `-`(lhs: i32, rhs: i32): i32 {. internal, priority=20, associativity=left .}; # implementations internals
+infix `*`(lhs: i32, rhs: i32): i32 {. internal, priority=10, associativity=left .}; # implementations internals
+infix `/`(lhs: i32, rhs: i32): i32 {. internal, priority=10, associativity=left .}; # implementations internals
 
 module ctypes =
     export type int = i32; # synonim for type 'i32'

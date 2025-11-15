@@ -4,6 +4,8 @@
 #include <kaleidoscope/type_traits.hpp>
 #include <compiler/demangle.hpp>
 
+#include <boost/container_hash/hash.hpp>
+
 #include <map>
 #include <unordered_map>
 #include <variant>
@@ -22,70 +24,30 @@
 
 namespace kaleidoscope
 {
+class Module;
+} // namespace kaleidoscope
+
+namespace std
+{
+template<>
+struct hash<::kaleidoscope::Module::Symbol_Key>;
+} // namespace std
+
+namespace kaleidoscope
+{
 
 struct Module
 {
     struct Symbol; // forward decl
 
-    enum class Symbol_Filter
+    enum class Symbol_Kind
     {
-        Any,
         Type,
         Func,
         Infix,
         Prefix,
-        Postfix
-    };
-
-    struct operator_properties
-    {
-        using Precedence = size_t;
-
-        enum class Associativity : uint8_t
-        {
-            Left,
-            Right
-        };
-
-        enum class Kind : uint8_t
-        {
-            Postfix,
-            Prefix,
-            Infix
-        };
-
-        Kind          kind          = Kind::Infix;
-        Associativity associativity = Associativity::Left;
-        Precedence    precedence    = 0; /**< lesser is higher */
-    };
-
-    struct Data_Object
-    {
-        Data_Object(std::any value)
-            : data_(value)
-        {
-        }
-
-        Data_Object(const Data_Object &)            = default;
-        Data_Object(Data_Object &&)                 = default;
-        Data_Object &operator=(const Data_Object &) = default;
-        Data_Object &operator=(Data_Object &&)      = default;
-
-        std::any
-        value(void) const
-        {
-            return data_;
-        }
-
-        const std::any &
-        data(void) const
-        {
-            return data_;
-        }
-
-      protected:
-
-        std::any data_;
+        Postfix,
+        DataObject
     };
 
     struct Proc_Signature
@@ -111,6 +73,19 @@ struct Module
         operator<(const Proc_Signature &other) const
         {
             return as_tuple() < other.as_tuple();
+        }
+
+        size_t
+        fingerprint(void) const
+        {
+            size_t seed;
+            boost::hash_combine(seed, result);
+
+            for (const auto &arg : args)
+            {
+                boost::hash_combine(seed, arg);
+            }
+            return seed;
         }
 
         template<traits::Type_Callable T>
@@ -141,175 +116,68 @@ struct Module
         }
     };
 
-    struct Functional
+    struct Operator_Properties
     {
-        using type = std::function<std::any(std::vector<std::any>)>;
+        using Precedence = size_t;
 
-        using args = std::vector<std::type_index>;
-
-        using sign = Proc_Signature;
-
-        template<traits::Type_Callable T>
-        Functional(sign signature, T &&body)
-            : signature_(signature)
+        enum class Associativity : uint8_t
         {
-            type body_ = [callable = std::forward<T>(body)](std::vector<std::any> args) -> std::any
-            {
-                using Callable         = std::decay_t<T>;
-                using Args             = boost::callable_traits::args_t<Callable>;
-                using Result           = boost::callable_traits::return_type_t<Callable>;
-                constexpr size_t arity = std::tuple_size_v<Args>;
+            Left,
+            Right
+        };
 
-                // Проверяем количество аргументов
-                if (args.size() != arity)
-                {
-                    throw std::runtime_error("Argument count mismatch");
-                }
-
-                // Распаковываем аргументы из std::any в кортеж
-                auto unpacked_args = [&]<size_t... I>(std::index_sequence<I...>)
-                {
-                    return std::make_tuple(
-                            std::any_cast<std::tuple_element_t<I, Args>>(args[I])...
-                    );
-                }(std::make_index_sequence<arity> {});
-
-                // Вызываем функцию с распакованными аргументами
-                if constexpr (std::is_void_v<Result>)
-                {
-                    std::apply(callable, unpacked_args);
-                    return std::any {};
-                }
-                else
-                {
-                    return std::apply(callable, unpacked_args);
-                }
-            };
-
-            data_ = std::move(body_);
-        }
-
-        Functional(type body)
-            : data_(body)
+        enum class Kind : uint8_t
         {
-        }
+            Postfix,
+            Prefix,
+            Infix
+        };
 
-        Functional(const Functional &)            = default;
-        Functional(Functional &&)                 = default;
-        Functional &operator=(const Functional &) = default;
-        Functional &operator=(Functional &&)      = default;
-
-        template<typename... Args>
-        std::any
-        value(Args... args)
-        {
-            std::vector<std::any> arguments;
-
-            ((arguments.push_back(std::make_any(args))), ...);
-
-            return std::any_cast<type>(data_)(std::move(arguments));
-        }
-
-        const std::any &
-        data(void) const
-        {
-            return data_;
-        }
-
-      protected:
-
-        std::any            data_;
-        std::optional<sign> signature_;
+        Kind          kind          = Kind::Infix;
+        Associativity associativity = Associativity::Left;
+        Precedence    precedence    = 0; /**< lesser is higher */
     };
 
-    using Overloads = std::map<Functional::sign, Symbol>;
-
-    struct Operator
+    struct Symbol_Key
     {
-        using type = std::function<std::any(std::vector<std::any>)>;
+        std::string                   name;
+        Symbol_Kind                   kind;
+        std::optional<Proc_Signature> overload;
 
-        Operator(operator_properties properties, type body)
-            : props_(properties)
-            , data_(body)
+        auto
+        as_tuple() const
         {
+            return std::tie(name, kind, overload);
         }
 
-        template<traits::Type_Callable T>
-        Operator(operator_properties properties, T &&body)
-            : props_(properties)
+        bool
+        operator==(const Symbol_Key &other) const
         {
-            type body_ = [callable = std::forward<T>(body)](std::vector<std::any> args) -> std::any
-            {
-                using Callable         = std::decay_t<T>;
-                using Args             = boost::callable_traits::args_t<Callable>;
-                using Result           = boost::callable_traits::return_type_t<Callable>;
-                constexpr size_t arity = std::tuple_size_v<Args>;
-
-                // Проверяем количество аргументов
-                if (args.size() != arity)
-                {
-                    throw std::runtime_error("Argument count mismatch");
-                }
-
-                // Распаковываем аргументы из std::any в кортеж
-                auto unpacked_args = [&]<size_t... I>(std::index_sequence<I...>)
-                {
-                    return std::make_tuple(
-                            std::any_cast<std::tuple_element_t<I, Args>>(args[I])...
-                    );
-                }(std::make_index_sequence<arity> {});
-
-                // Вызываем функцию с распакованными аргументами
-                if constexpr (std::is_void_v<Result>)
-                {
-                    std::apply(callable, unpacked_args);
-                    return std::any {};
-                }
-                else
-                {
-                    return std::apply(callable, unpacked_args);
-                }
-            };
-
-            data_ = std::move(body_);
+            return as_tuple() == other.as_tuple();
         }
 
-        Operator(const Operator &)            = default;
-        Operator(Operator &&)                 = default;
-        Operator &operator=(const Operator &) = default;
-        Operator &operator=(Operator &&)      = default;
-
-        template<typename... Args>
-        std::any value(Args... args);
-
-        const std::any &
-        data(void) const
+        bool
+        operator<(const Symbol_Key &other) const
         {
-            return data_;
+            return as_tuple() < other.as_tuple();
         }
-
-        const operator_properties &
-        props() const
-        {
-            return props_;
-        }
-
-      protected:
-
-        operator_properties props_;
-        std::any            data_;
     };
+
+    using Symbol_Name          = std::string;
+    using Symbol_Idx           = size_t;
+    using Any_Callable_Wrapper = std::function<std::any(std::vector<std::any>)>;
+    using precedence           = std::unordered_map<Symbol_Name, Operator_Properties>;
 
     struct Type
     {
-        using type = std::function<std::any(std::vector<std::any>)>;
+        using type = Any_Callable_Wrapper;
 
         template<traits::Type_Object_Value_Semantic T>
         static Type
         make_type(std::optional<std::decay_t<T>> default_ = std::nullopt);
 
         Type(type default_value, std::type_index type_id)
-            : default_value_(std::move(default_value))
+            : get_default_value_(std::move(default_value))
             , type_id_(type_id)
         {
         }
@@ -320,42 +188,152 @@ struct Module
         Type &operator=(Type &&)      = default;
 
         std::any
-        value(void) const
+        get_default(void) const
         {
-            return get_default_cached_();
+            return get_default_value_({});
         }
+
+        std::type_index
+        type(void) const
+        {
+            return type_id_;
+        }
+
+      protected:
+
+        type            get_default_value_;
+        std::type_index type_id_;
+    };
+
+    struct Functional
+    {
+        using type = Any_Callable_Wrapper;
+        using sign = Proc_Signature;
+
+        template<traits::Type_Callable T>
+        Functional(T &&body)
+            : signature_(Proc_Signature::from<T>())
+        {
+            type body_ = [callable = std::forward<T>(body)](std::vector<std::any> args) -> std::any
+            {
+                using Callable         = std::decay_t<T>;
+                using Args             = boost::callable_traits::args_t<Callable>;
+                using Result           = boost::callable_traits::return_type_t<Callable>;
+                constexpr size_t arity = std::tuple_size_v<Args>;
+
+                // Проверяем количество аргументов
+                if (args.size() != arity)
+                {
+                    throw std::runtime_error("Argument count mismatch");
+                }
+
+                // Распаковываем аргументы из std::any в кортеж
+                try
+                {
+                    Args unpacked_args = [&]<size_t... I>(std::index_sequence<I...>)
+                    {
+                        return std::make_tuple(
+                                std::any_cast<std::tuple_element_t<I, Args>>(args[I])...
+                        );
+                    }(std::make_index_sequence<arity> {});
+
+                    // Вызываем функцию с распакованными аргументами
+                    if constexpr (std::is_void_v<Result>)
+                    {
+                        std::apply(callable, unpacked_args);
+                        return std::any {};
+                    }
+                    else
+                    {
+                        return std::apply(callable, unpacked_args);
+                    }
+                }
+                catch (std::bad_any_cast &e)
+                {
+                    throw std::runtime_error("Argument type error during functional call.");
+                }
+            };
+
+            data_ = std::move(body_);
+        }
+
+        Functional(const Functional &)            = default;
+        Functional(Functional &&)                 = default;
+        Functional &operator=(const Functional &) = default;
+        Functional &operator=(Functional &&)      = default;
+
+        template<typename... Args>
+            requires((traits::Type_Object_Value_Semantic<Args> && std::is_constructible_v<std::any, Args>, ...))
+        std::any
+        operator()(Args... args) const
+        {
+            constexpr std::size_t arity = sizeof...(Args);
+            std::vector<std::any> arguments;
+            arguments.reserve(arity);
+
+            ((arguments.push_back(std::make_any(args))), ...);
+
+            return operator()(std::move(arguments));
+        }
+
+        std::any
+        operator()(std::vector<std::any> args) const
+        {
+            return body_(std::move(args));
+        }
+
+        const sign &
+        signature(void) const
+        {
+            return signature_;
+        }
+
+      protected:
+
+        type body_;
+        sign signature_;
+    };
+
+    struct Data_Object
+    {
+        Data_Object(std::any value, Symbol_Key type)
+            : data_(value)
+            , type_(type)
+        {
+        }
+
+        Data_Object(const Data_Object &)            = default;
+        Data_Object(Data_Object &&)                 = default;
+        Data_Object &operator=(const Data_Object &) = default;
+        Data_Object &operator=(Data_Object &&)      = default;
 
         const std::any &
         data(void) const
         {
-            return get_default_cached_();
+            return data_;
         }
-
-      protected:
 
         std::any &
-        get_default_cached_(void) const
+        data(void)
         {
-            if (!default_cache_.has_value())
-            {
-                default_cache_ = default_value_({});
-            }
-            return default_cache_;
+            return data_;
+        }
+
+        Symbol_Key
+        type(void) const
+        {
+            return type_;
         }
 
       protected:
 
-        type             default_value_;
-        std::type_index  type_id_;
-        mutable std::any default_cache_;
+        std::any   data_;
+        Symbol_Key type_;
     };
-
-    using precedence  = std::unordered_map<std::string, operator_properties>;
-    using Symbol_Name = std::string;
 
     struct Symbol
     {
-        using Object = std::variant<Data_Object, Functional, Operator, Type>;
+        using Object = std::variant<Type, Functional, Data_Object>;
 
         Symbol(Object value)
             : obj_(value)
@@ -379,18 +357,18 @@ struct Module
             return obj_;
         }
 
-        const std::any &
-        value()
+        template<typename T>
+        const T *
+        get_if(void) const
         {
-            const std::any *result;
-            std::visit(
-                    [&](auto &&v)
-                    {
-                        result = &v.data();
-                    },
-                    obj_
-            );
-            return *result;
+            return std::get_if<T>(&obj_);
+        }
+
+        template<typename T>
+        T *
+        get_if(void)
+        {
+            return std::get_if<T>(&obj_);
         }
 
       protected:
@@ -403,207 +381,40 @@ struct Module
     void
     link_static(const Module &m)
     {
+#if 0 // TODO: implement
         identifiers.insert(m.identifiers.begin(), m.identifiers.end());
         prefix_ops.insert(m.prefix_ops.begin(), m.prefix_ops.end());
         infix_ops.insert(m.infix_ops.begin(), m.infix_ops.end());
+#endif
     }
 
     void
     link_shared(const Module &m)
     {
+#if 0
         linked.push_front(std::ref(m));
+#endif
     }
 
   public:
 
     precedence
-    collect_operators_info(void) const
+    operators_info(void) const
     {
-        auto current_module = std::accumulate(
-                infix_ops.cbegin(),
-                infix_ops.cend(),
-                precedence {},
-                [](auto acc, const auto &pair)
-                {
-                    if (auto op = std::get_if<Operator>(&pair.second.variant()))
-                    {
-                        acc.emplace(std::make_pair(pair.first, op->props()));
-                    }
-                    else
-                    {
-                        // do nothing
-                    }
-                    return acc;
-                }
-        );
-
-        for (auto &&m : linked | std::ranges::views::reverse)
-        {
-            auto result = m.get().collect_operators_info();
-            current_module.insert(result.begin(), result.end());
-        }
-
-        return current_module;
-    }
-
-    const std::any &
-    at(const std::string &symbol)
-    {
-        const std::any *result = nullptr;
-
-        std::visit([&](auto &&v)
-                   {
-                       result = &v.data();
-                   },
-                   identifiers.at(symbol).variant());
-        return *result;
+        return op_properties_;
     }
 
   public:
 
-    const Type::type &
-    get_type(const std::string &name)
+    const Symbol *
+    find_symbol(std::string name, Symbol_Key key) const
     {
-        using namespace std::string_literals;
-        auto res = find_symbol(name, Symbol_Filter::Type);
-
-        if (res.has_value())
-        {
-            if (auto sym = std::get_if<Type>(&res.value().get().variant()))
-            {
-                return *std::any_cast<Type::type>(&sym->data());
-            }
-            else
-            {
-                throw std::runtime_error("Symbol "s + name + " is not a type");
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Symbol "s + name + " is undefined");
-        }
-    }
-
-    const Functional::type &
-    get_func(const std::string &name)
-    {
-        using namespace std::string_literals;
-        auto res = find_symbol(name, Symbol_Filter::Func);
-
-        if (res.has_value())
-        {
-            if (auto sym = std::get_if<Functional>(&res.value().get().variant()))
-            {
-                return *std::any_cast<Functional::type>(&sym->data());
-            }
-            else
-            {
-                throw std::runtime_error("Symbol "s + name + " is not a function");
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Symbol "s + name + " is undefined");
-        }
-    }
-
-    const Functional::type &
-    get_binop(const std::string &name)
-    {
-        using namespace std::string_literals;
-        auto res = find_symbol(name, Symbol_Filter::Infix);
-
-        if (res.has_value())
-        {
-            if (auto sym = std::get_if<Operator>(&res.value().get().variant()))
-            {
-                return *std::any_cast<Functional::type>(&sym->data());
-            }
-            else
-            {
-                throw std::runtime_error("Symbol "s + name + " is not a binary operator");
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Symbol "s + name + " is undefined");
-        }
-    }
-
-    const Functional::type &
-    get_unop(const std::string &name)
-    {
-        using namespace std::string_literals;
-        auto res = find_symbol(name, Symbol_Filter::Prefix);
-
-        if (res.has_value())
-        {
-            if (auto sym = std::get_if<Operator>(&res.value().get().variant()))
-            {
-                return *std::any_cast<Functional::type>(&sym->data());
-            }
-            else
-            {
-                throw std::runtime_error("Symbol "s + name + " is not an unary operator");
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Symbol "s + name + " is undefined");
-        }
-    }
-
-    std::optional<std::reference_wrapper<const Functional::type>>
-    get_overload(std::string name, const Functional::args &arg_types) const
-    {
-        using Result = std::optional<std::reference_wrapper<const Functional::type>>;
+        using Result = const Symbol *;
         using namespace std::string_literals;
 
         Result result;
 
-        if (overloads.count(name))
-        {
-            for (const auto &[sign, sym_call] : overloads.at(name))
-            {
-                if (arg_types == sign.args)
-                {
-                    if (auto sym = std::get_if<Functional>(&sym_call.variant()))
-                    {
-                        result.emplace(*std::any_cast<Functional::type>(&sym->data()));
-                    }
-                }
-            }
-        }
-        else if (identifiers.count(name))
-        {
-            if (auto sym = std::get_if<Functional>(&identifiers.at(name).variant()))
-            {
-                result.emplace(*std::any_cast<Functional::type>(&sym->data()));
-            }
-        }
-        else if (!linked.empty())
-        {
-            for (auto &&module_ : linked | std::views::reverse)
-            {
-                result = module_.get().get_overload(name, arg_types);
-            }
-        }
-
-        return result;
-    }
-
-    std::optional<std::reference_wrapper<const Symbol>>
-    find_symbol(std::string name, Symbol_Filter filter_by = Symbol_Filter::Any) const
-    {
-        using Result = std::optional<std::reference_wrapper<const Symbol>>;
-        using namespace std::string_literals;
-
-        Result result;
-
-        bool is_search_for_func  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Func == filter_by);
-        bool is_search_for_unop  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Prefix == filter_by);
-        bool is_search_for_binop = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Infix == filter_by);
-        bool is_search_for_type  = (Symbol_Filter::Any == filter_by) || (Symbol_Filter::Type == filter_by);
+        std::ranges::find
 
         if (is_search_for_type && types.count(name))
         {
@@ -636,12 +447,7 @@ struct Module
                 }
             }
         }
-        else
-        {
-            result = std::nullopt;
-        }
-
-        return result;
+        return nullptr;
     }
 
   public:
@@ -650,14 +456,22 @@ struct Module
     Module &
     bind_type(std::string name)
     {
-        types.insert_or_assign(name, Symbol {Type::make_type<T>()});
-        return *this;
-    }
+        Symbol_Key key {.name = name, .kind = Symbol_Kind::Type};
 
-    Module &
-    bind_func(std::string name, Functional::type value)
-    {
-        identifiers.insert_or_assign(name, Symbol {Functional {value}});
+        auto res = std::ranges::find(lookup_cache_, key);
+
+        if (res != lookup_cache_.end())
+        {
+            throw std::invalid_argument("type already exists: " + name);
+        }
+        else
+        {
+            symbols.insert_or_assign(Symbol {Type::make_type<T>()});
+
+            size_t sym_idx = symbols.size() - 1;
+            lookup_cache_.insert_or_assign(std::move(key), sym_idx);
+        }
+
         return *this;
     }
 
@@ -665,49 +479,111 @@ struct Module
     Module &
     bind_func(std::string name, T &&value)
     {
-        // TODO: bind callable
-        auto signature = Functional::sign::from<T>();
+        auto       sign = Proc_Signature::from<T>();
+        Symbol_Key key {.name = name, .kind = Symbol_Kind::Func, .overload = sign};
 
-        auto declaration = std::accumulate(
-                signature.args.cbegin(), signature.args.cend(), std::string {}, [](auto acc, auto &&elem)
+        auto declaration_str = std::accumulate(
+                sign.args.cbegin(), sign.args.cend(), std::string {}, [](auto acc, auto &&elem)
                 {
                     return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
                 }
         );
 
-        std::cout << "bind func: " << name << "(" << declaration << ")" << std::endl;
+        auto res = std::ranges::find(lookup_cache_, key);
 
-        if (!overloads.contains(name))
+        if (res != lookup_cache_.end())
         {
-            overloads.emplace(std::make_pair(name, Overloads {}));
-        }
-
-        auto &callable_overloads = overloads.at(name);
-
-        auto res = std::ranges::find_if(callable_overloads, [&signature](auto &&elem)
-                                        {
-                                            return elem.first == signature;
-                                        });
-        if (res != callable_overloads.end())
-        {
-            throw std::invalid_argument("overload already exists");
+            throw std::invalid_argument("overload already exists: " + "function " + name + "(" + declaration_str + ")");
         }
         else
         {
-            callable_overloads.emplace(std::make_pair(signature, Symbol {Functional {signature, std::forward<T>(value)}}));
+            std::cout << "bind function: " << name << "(" << declaration_str << ")" << std::endl;
+
+            symbols.emplace_back(Symbol {Functional {std::move(sign), std::forward<T>(value)}});
+
+            size_t sym_idx = symbols.size() - 1;
+            lookup_cache_.insert_or_assign(std::move(key), sym_idx);
         }
 
         return *this;
     }
 
-    template<traits::Type_Basic_Scalar T>
+    template<traits::Type_Callable T>
+    Module &
+    bind_op(std::string name, Operator_Properties properties, T &&value)
+    {
+        Symbol_Key  key;
+        auto        sign = Proc_Signature::from<T>();
+        std::string opkind_keyword;
+        if (Operator_Properties::Kind::Infix == properties.kind)
+        {
+            key = Symbol_Key
+            {
+                .name     = name,
+                .kind     = Symbol_Kind::Infix,
+                .overload = sign;
+            };
+
+            opkind_keyword = "infix"
+        }
+        else if (Operator_Properties::Kind::Prefix == properties.kind)
+        {
+            key = Symbol_Key
+            {
+                .name     = name,
+                .kind     = Symbol_Kind::Prefix,
+                .overload = sign;
+            };
+
+            opkind_keyword = "prefix"
+        }
+        else // if (Operator_Properties::Kind::Postfix == properties.kind)
+        {
+            key = Symbol_Key
+            {
+                .name     = name,
+                .kind     = Symbol_Kind::Postfix,
+                .overload = sign;
+            };
+
+            opkind_keyword = "postfix"
+        }
+
+        auto declaration_str = std::accumulate(
+                sign.args.cbegin(), sign.args.cend(), std::string {}, [](auto acc, auto &&elem)
+                {
+                    return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
+                }
+        );
+
+        auto res = std::ranges::find(lookup_cache_, key);
+
+        if (res != lookup_cache_.end())
+        {
+            throw std::invalid_argument("overload already exists: " + opkind_keyword + " " + name + "(" + declaration_str + ")");
+        }
+        else
+        {
+            std::cout << "bind " << opkind_keyword << ": " << name << "(" << declaration_str << ")" << std::endl;
+
+            symbols.emplace_back(Symbol {Functional {std::move(sign), std::forward<T>(value)}});
+
+            size_t sym_idx = symbols.size() - 1;
+            op_properties_.insert_or_assign(std::make_pair(name, properties));
+            lookup_cache_.insert_or_assign(std::move(key), sym_idx);
+        }
+
+        return *this;
+    }
+
+    template<traits::Type_Object_Value_Semantic T>
     Module &
     bind_var(std::string name, T &&value)
     {
         identifiers.insert_or_assign(
                 name,
                 Symbol {
-                        Functional {
+                        Data_Object {
                                 [value = std::forward<T>(value)](std::vector<std::any> args) -> std::any
                                 {
                                     return value;
@@ -718,60 +594,21 @@ struct Module
         return *this;
     }
 
-    template<typename Any>
-    Module &
-    bind_var(std::string name, Any &&value)
-        requires std::same_as<std::decay_t<Any>, std::any>
-    {
-        identifiers.insert_or_assign(
-                name,
-                Symbol {
-                        Functional {
-                                [value = std::forward<Any>(value)](std::vector<std::any> args) -> std::any
-                                {
-                                    return value;
-                                }
-                        }
-                }
-        );
-        return *this;
-    }
-
-    Module &
-    bind_op(std::string name, Operator value)
-    {
-        if (operator_properties::Kind::Infix == value.props().kind)
-        {
-            infix_ops.emplace(name, value);
-        }
-        else // if (operator_properties::Kind::Prefix == value.props().kind)
-        {
-            prefix_ops.emplace(name, value);
-        }
-
-        return *this;
-    }
-
   public:
 
     void
     clear(void)
     {
-        types.clear();
-        identifiers.clear();
-        prefix_ops.clear();
-        infix_ops.clear();
-        linked.clear();
+        symbols.clear();
+        op_properties_.clear();
+        lookup_cache_.clear();
     }
 
   protected:
 
-    std::unordered_map<Symbol_Name, Symbol>    types;
-    std::unordered_map<Symbol_Name, Symbol>    identifiers;
-    std::unordered_map<Symbol_Name, Symbol>    prefix_ops;
-    std::unordered_map<Symbol_Name, Symbol>    postfix_ops;
-    std::unordered_map<Symbol_Name, Symbol>    infix_ops;
-    std::unordered_map<Symbol_Name, Overloads> overloads;
+    std::vector<Symbol>              symbols;
+    precedence                       op_properties_; // should be constant by unique operator name!
+    std::map<Symbol_Key, Symbol_Idx> lookup_cache_;
 
     std::list<std::reference_wrapper<const Module>> linked;
 };
@@ -784,7 +621,7 @@ Module::Type::make_type(std::optional<std::decay_t<T>> default_)
 
     TypePure init_value;
 
-    if constexpr (std::is_integral_v<TypePure>)
+    if constexpr (std::is_integral_v<TypePure> || std::is_ariphmetic_v<TypePure>)
     {
         init_value = default_.value_or(TypePure {0});
     }
@@ -805,3 +642,23 @@ Module::Type::make_type(std::optional<std::decay_t<T>> default_)
 }
 
 } // namespace kaleidoscope
+
+namespace std
+{
+template<>
+struct hash<::kaleidoscope::Module::Symbol_Key>
+{
+    size_t
+    operator()(const ::kaleidoscope::Module::Symbol_Key &key) const
+    {
+        size_t seed = 0;
+        boost::hash_combine(seed, key.name);
+        boost::hash_combine(seed, static_cast<size_t>(key.kind));
+        if (key.overload)
+        {
+            boost::hash_combine(seed, key.overload->fingerprint());
+        }
+        return seed;
+    }
+};
+} // namespace std

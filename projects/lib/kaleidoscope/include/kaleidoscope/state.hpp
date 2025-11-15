@@ -24,7 +24,7 @@ struct state
   public:
 
     using Cache_Ast           = std::unordered_map<std::string, Ast>;
-    using operator_properties = Module::operator_properties;
+    using Operator_Properties = Module::Operator_Properties;
     using result              = runtime::result;
 
     struct symbol
@@ -122,7 +122,7 @@ struct state
 
     template<typename F>
     state &
-    add_operator(std::string name, operator_properties props, F impl)
+    add_operator(std::string name, Operator_Properties props, F impl)
     {
         return *this;
     }
