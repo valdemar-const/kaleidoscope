@@ -88,60 +88,66 @@ struct Module
         std::any data_;
     };
 
+    struct Proc_Signature
+    {
+        using Args = std::vector<std::type_index>;
+
+        std::type_index result;
+        Args            args;
+
+        auto
+        as_tuple() const
+        {
+            return std::tie(result, args);
+        }
+
+        bool
+        operator==(const Proc_Signature &other) const
+        {
+            return as_tuple() == other.as_tuple();
+        }
+
+        bool
+        operator<(const Proc_Signature &other) const
+        {
+            return as_tuple() < other.as_tuple();
+        }
+
+        template<traits::Type_Callable T>
+        static const Proc_Signature &
+        from(void)
+        {
+            using Callable       = std::decay_t<T>;
+            using Args           = boost::callable_traits::args_t<Callable>;
+            using Result         = boost::callable_traits::return_type_t<Callable>;
+            constexpr auto arity = std::tuple_size_v<Args>;
+
+            static constexpr auto get_args_signatures = []<typename Tuple>(void) -> const std::vector<std::type_index> &
+            {
+                static const auto result = []<size_t... I>(std::index_sequence<I...>) -> std::vector<std::type_index>
+                {
+                    std::vector<std::type_index> args_type_signatures;
+                    (args_type_signatures.emplace_back(typeid(std::tuple_element_t<I, Tuple>)), ...);
+                    return args_type_signatures;
+                }(std::make_index_sequence<std::tuple_size_v<Tuple>> {});
+                return result;
+            };
+
+            static const Proc_Signature result {
+                typeid(Result),
+                get_args_signatures.template operator()<Args>()
+            };
+            return result;
+        }
+    };
+
     struct Functional
     {
         using type = std::function<std::any(std::vector<std::any>)>;
 
         using args = std::vector<std::type_index>;
 
-        struct sign
-        {
-            std::type_index result;
-            args            args;
-
-            auto
-            as_tuple() const
-            {
-                return std::tie(result, args);
-            }
-
-            bool
-            operator==(const sign &other) const
-            {
-                return as_tuple() == other.as_tuple();
-            }
-
-            bool
-            operator<(const sign &other) const
-            {
-                return as_tuple() < other.as_tuple();
-            }
-
-            template<traits::Type_Callable T>
-            static const sign &
-            from(void)
-            {
-                using Callable       = std::decay_t<T>;
-                using Args           = boost::callable_traits::args_t<Callable>;
-                using Result         = boost::callable_traits::return_type_t<Callable>;
-                constexpr auto arity = std::tuple_size_v<Args>;
-
-                static constexpr auto get_args_signatures = []<typename Tuple>(void) -> const std::vector<std::type_index> &
-                {
-                    static const auto result = []<size_t... I>(std::index_sequence<I...>) -> std::vector<std::type_index>
-                    {
-                        std::vector<std::type_index> args_type_signatures;
-                        (args_type_signatures.emplace_back(typeid(std::tuple_element_t<I, Tuple>)), ...);
-                        return args_type_signatures;
-                    }(std::make_index_sequence<std::tuple_size_v<Tuple>> {});
-                    return result;
-                };
-
-                static const sign result { typeid(Result),
-                                           get_args_signatures.template operator()<Args>() };
-                return result;
-            }
-        };
+        using sign = Proc_Signature;
 
         template<traits::Type_Callable T>
         Functional(sign signature, T &&body)
@@ -399,7 +405,7 @@ struct Module
     {
         identifiers.insert(m.identifiers.begin(), m.identifiers.end());
         prefix_ops.insert(m.prefix_ops.begin(), m.prefix_ops.end());
-        binary_ops.insert(m.binary_ops.begin(), m.binary_ops.end());
+        infix_ops.insert(m.infix_ops.begin(), m.infix_ops.end());
     }
 
     void
@@ -414,8 +420,8 @@ struct Module
     collect_operators_info(void) const
     {
         auto current_module = std::accumulate(
-                binary_ops.cbegin(),
-                binary_ops.cend(),
+                infix_ops.cbegin(),
+                infix_ops.cend(),
                 precedence {},
                 [](auto acc, const auto &pair)
                 {
@@ -611,9 +617,9 @@ struct Module
         {
             result.emplace(prefix_ops.at(name));
         }
-        else if (is_search_for_binop && binary_ops.count(name))
+        else if (is_search_for_binop && infix_ops.count(name))
         {
-            result.emplace(binary_ops.at(name));
+            result.emplace(infix_ops.at(name));
         }
         else if (!linked.empty())
         {
@@ -736,7 +742,7 @@ struct Module
     {
         if (operator_properties::Kind::Infix == value.props().kind)
         {
-            binary_ops.emplace(name, value);
+            infix_ops.emplace(name, value);
         }
         else // if (operator_properties::Kind::Prefix == value.props().kind)
         {
@@ -754,7 +760,7 @@ struct Module
         types.clear();
         identifiers.clear();
         prefix_ops.clear();
-        binary_ops.clear();
+        infix_ops.clear();
         linked.clear();
     }
 
@@ -763,7 +769,8 @@ struct Module
     std::unordered_map<Symbol_Name, Symbol>    types;
     std::unordered_map<Symbol_Name, Symbol>    identifiers;
     std::unordered_map<Symbol_Name, Symbol>    prefix_ops;
-    std::unordered_map<Symbol_Name, Symbol>    binary_ops;
+    std::unordered_map<Symbol_Name, Symbol>    postfix_ops;
+    std::unordered_map<Symbol_Name, Symbol>    infix_ops;
     std::unordered_map<Symbol_Name, Overloads> overloads;
 
     std::list<std::reference_wrapper<const Module>> linked;
