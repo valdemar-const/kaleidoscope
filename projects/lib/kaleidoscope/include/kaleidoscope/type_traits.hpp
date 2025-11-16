@@ -16,7 +16,7 @@ namespace traits
                              && !std::is_array_v<std::remove_cvref_t<T>>;
 
     template<typename T>
-    concept Type_Object_Value_Semantic = std::regular<T> && std::movable<T>
+    concept Type_Object_Value_Semantic = (std::default_initializable<T> && std::copyable<T> && std::movable<T>)
                                       && !std::same_as<std::any, std::remove_cvref_t<T>>;
 
     template<typename T>

@@ -296,12 +296,16 @@ runtime::eval_node::visit_(const ast::Variable &node)
 {
     using namespace std::string_literals;
 
-    auto func = owner_.get().scope().get_func(node.name);
-    if (!func)
+    auto sym_data_obj = owner_.get().scope().find_symbol(Module::Symbol_Key {.name = node.name, .kind = Module::Symbol_Kind::DataObject});
+    auto data_obj     = (sym_data_obj) ? sym_data_obj->get_if<Module::Data_Object>() : nullptr;
+    if (data_obj)
+    {
+        result_ = data_obj->data();
+    }
+    else
     {
         throw std::runtime_error("unknown variable: "s + node.name);
     }
-    result_ = std::any_cast<double>(func({}));
 }
 
 inline void
@@ -320,7 +324,7 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
             }
     );
 
-    auto sign = std::accumulate(args.cbegin(), args.cend(), Module::Functional::args {}, [](auto acc, auto &&elem)
+    auto sign = std::accumulate(args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
                                 {
                                     acc.emplace_back(elem.type());
                                     return acc;
@@ -335,23 +339,17 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
 
     std::cout << "scan for overload: " << node.callee << "(" << declaration << ")" << std::endl;
 
-    try
+    auto func = owner_.get().scope().find_symbol(
+            Module::Symbol_Key {node.callee, Module::Symbol_Kind::Func, std::make_optional(sign)}
+    );
+
+    if (auto as_func = func->template get_if<Module::Functional>())
     {
-        auto func = owner_.get().scope().get_overload(node.callee, sign);
-        if (func)
-        {
-            result_ = func.value().get()(std::move(args));
-        }
+        result_ = (*as_func)(std::move(args));
     }
-    catch (std::exception &e)
+    else
     {
-        auto error = e.what();
-        auto func  = owner_.get().scope().get_func(node.callee);
-        if (!func)
-        {
-            throw std::runtime_error("unknown function name: "s + node.callee);
-        }
-        result_ = std::any_cast<double>(func(std::move(args)));
+        throw std::runtime_error("unknown function name: "s + node.callee);
     }
 }
 
@@ -360,17 +358,27 @@ runtime::eval_node::visit_(const ast::Operation_Infix &node)
 {
     using namespace std::string_literals;
 
-    auto func = owner_.get().scope().get_binop(node.op);
-    if (!func)
-    {
-        throw std::runtime_error("unknown binary operator: "s + node.op);
-    }
-
     std::vector<std::any> args;
     args.emplace_back(eval(*node.lhs));
     args.emplace_back(eval(*node.rhs));
 
-    result_ = std::any_cast<double>(func(std::move(args)));
+    auto sign = std::accumulate(
+            args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
+            {
+                acc.emplace_back(elem.type());
+                return acc;
+            }
+    );
+
+    auto func = owner_.get().scope().find_symbol(Module::Symbol_Key {node.op, Module::Symbol_Kind::Infix, std::make_optional(sign)});
+    if (auto as_func = func->template get_if<Module::Functional>())
+    {
+        result_ = (*as_func)(std::move(args));
+    }
+    else
+    {
+        throw std::runtime_error("unknown binary operator: "s + node.op);
+    }
 }
 
 inline void
@@ -378,16 +386,26 @@ runtime::eval_node::visit_(const ast::Operation_Postfix &node)
 {
     using namespace std::string_literals;
 
-    auto func = owner_.get().scope().get_unop(node.op);
-    if (!func)
-    {
-        throw std::runtime_error("unknown unary operator: "s + node.op);
-    }
-
     std::vector<std::any> args;
     args.emplace_back(eval(*node.operand));
 
-    result_ = std::any_cast<double>(func(std::move(args)));
+    auto sign = std::accumulate(
+            args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
+            {
+                acc.emplace_back(elem.type());
+                return acc;
+            }
+    );
+
+    auto func = owner_.get().scope().find_symbol(Module::Symbol_Key {node.op, Module::Symbol_Kind::Postfix, std::make_optional(sign)});
+    if (auto as_func = func->template get_if<Module::Functional>())
+    {
+        result_ = (*as_func)(std::move(args));
+    }
+    else
+    {
+        throw std::runtime_error("unknown unary operator: "s + node.op);
+    }
 }
 
 inline void
@@ -395,16 +413,26 @@ runtime::eval_node::visit_(const ast::Operation_Prefix &node)
 {
     using namespace std::string_literals;
 
-    auto func = owner_.get().scope().get_unop(node.op);
-    if (!func)
-    {
-        throw std::runtime_error("unknown unary operator: "s + node.op);
-    }
-
     std::vector<std::any> args;
     args.emplace_back(eval(*node.operand));
 
-    result_ = std::any_cast<double>(func(std::move(args)));
+    auto sign = std::accumulate(
+            args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
+            {
+                acc.emplace_back(elem.type());
+                return acc;
+            }
+    );
+
+    auto func = owner_.get().scope().find_symbol(Module::Symbol_Key {node.op, Module::Symbol_Kind::Prefix, std::make_optional(sign)});
+    if (auto as_func = func->template get_if<Module::Functional>())
+    {
+        result_ = (*as_func)(std::move(args));
+    }
+    else
+    {
+        throw std::runtime_error("unknown unary operator: "s + node.op);
+    }
 }
 
 inline void
@@ -419,8 +447,11 @@ runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
     {
         if (auto type_ = dynamic_cast<ast::Type_Declaration *>(node.type.get()))
         {
-            auto &default_value = owner_.get().scope().get_type(type_->name);
-            init_value          = default_value({});
+            auto sym_type = owner_.get().scope().find_symbol(Module::Symbol_Key {type_->name, Module::Symbol_Kind::Type});
+            if (auto as_type = sym_type->template get_if<Module::Type>())
+            {
+                init_value = (*as_type).get_default();
+            }
         }
     }
     else
@@ -444,10 +475,7 @@ runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
 
     for (const auto &name : node.names)
     {
-        owner_.get().scope().bind_var(
-                name,
-                init_value
-        );
+        owner_.get().scope().bind_var(name, init_value);
     }
 
     result_ = runtime::result {}; // var declaration not return value

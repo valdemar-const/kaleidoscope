@@ -77,13 +77,6 @@ struct state
             return owner_.get();
         }
 
-        state &
-        operator=(Module::Operator value)
-        {
-            owner_.get().runtime_.scope().bind_op(symbol_name_, value);
-            return owner_.get();
-        }
-
       protected:
 
         std::reference_wrapper<state> owner_;
@@ -203,7 +196,7 @@ struct state
     Ast
     preprocess(Ast ast)
     {
-        auto operators_info = runtime_.scope().collect_operators_info();
+        auto operators_info = runtime_.scope().operators_info();
         ast::utils::precedence {operators_info}(ast);
         return ast;
     }
