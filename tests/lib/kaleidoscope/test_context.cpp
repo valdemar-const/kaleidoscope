@@ -67,12 +67,6 @@ struct F
         using Kind          = kaleidoscope::Module::Operator_Properties::Kind;
         using Associativity = kaleidoscope::Module::Operator_Properties::Associativity;
 
-        ctx.register_type<bool>("bool");
-        ctx.register_type<int64_t>("i64");
-        ctx.register_type<uint64_t>("u64");
-        ctx.register_type<double>("f64");
-        ctx.register_type<std::string>("string");
-
         ctx.get_rt()
                 .register_ast_promotion<kaleidoscope::ast::Literal_Numeric>(
                         [](const kaleidoscope::ast::Literal_Numeric &numeric) -> std::any
@@ -106,328 +100,452 @@ struct F
                 );
 
         Module context;
+
+        context.bind_type<bool>("bool");
+        context.bind_type<int64_t>("i64");
+        context.bind_type<uint64_t>("u64");
+        context.bind_type<double>("f64");
+        context.bind_type<std::string>("string");
+
         // script::core
 
         // - unary ops:
 
-        context.bind_op(
-                "+",
-                {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 1)
+        /* prefix + */ {
+            context.bind_op(
+                    "+",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](int64_t op) -> int64_t
                     {
-                        return +(std::any_cast<Result>(args[0]).as<double>());
+                        return +op;
                     }
-                    else
+            );
+
+            context.bind_op(
+                    "+",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](uint64_t op) -> uint64_t
                     {
-                        throw std::invalid_argument("core::operator`+` requires 1 arguments, but "s + std::to_string(args.size()) + " passed!");
+                        return +op;
                     }
-                }
-        );
+            );
 
-        context.bind_op(
-                "-",
-                {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 1)
+            context.bind_op(
+                    "+",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](double op) -> double
                     {
-                        return -(std::any_cast<Result>(args[0]).as<double>());
+                        return +op;
                     }
-                    else
+            );
+        }
+
+        /* prefix - */ {
+            context.bind_op(
+                    "-",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](int64_t op) -> int64_t
                     {
-                        throw std::invalid_argument("core::operator`-` requires 1 arguments, but "s + std::to_string(args.size()) + " passed!");
+                        return -op;
                     }
-                }
-        );
+            );
 
-        context.bind_op(
-                "!",
-                {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 1)
+            context.bind_op(
+                    "-",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](uint64_t op) -> uint64_t
                     {
-                        bool is_true = std::any_cast<Result>(args[0]).as<double>() != 0.0;
-
-                        return static_cast<double>(!is_true);
+                        return -op;
                     }
-                    else
+            );
+
+            context.bind_op(
+                    "-",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](double op) -> double
                     {
-                        throw std::invalid_argument("core::operator`!` requires 1 arguments, but "s + std::to_string(args.size()) + " passed!");
+                        return -op;
                     }
-                }
-        );
+            );
+        }
 
-        // '!'
-        // '~'
+        /* prefix ! */ {
+            context.bind_op(
+                    "!",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](int64_t op) -> bool
+                    {
+                        return !op;
+                    }
+            );
+
+            context.bind_op(
+                    "!",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](uint64_t op) -> bool
+                    {
+                        return !op;
+                    }
+            );
+
+            context.bind_op(
+                    "!",
+                    {.kind = Kind::Prefix, .associativity = Associativity::Left, .precedence = 20},
+                    [](double op) -> bool
+                    {
+                        return !op;
+                    }
+            );
+        }
 
         // - binary ops:
 
-        context.bind_op(
-                "*",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+        // '&'
+        // '|'
+        // '^'
+        // '~'
+        // '<<'
+        // '>>'
 
-                    if (args.size() == 2)
+        /* infix * */ {
+            context.bind_op(
+                    "*",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](int64_t lhs, int64_t rhs) -> int64_t
                     {
-                        return std::any_cast<Result>(args[0]).as<double>()
-                             * std::any_cast<Result>(args[1]).as<double>();
+                        return lhs * rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`*` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
 
-        context.bind_op(
-                "/",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 2)
+            context.bind_op(
+                    "*",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](uint64_t lhs, uint64_t rhs) -> uint64_t
                     {
-                        return std::any_cast<Result>(args[0]).as<double>()
-                             / std::any_cast<Result>(args[1]).as<double>();
+                        return lhs * rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`/` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
 
-        context.bind_op(
-                "%",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 2)
+            context.bind_op(
+                    "*",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](double lhs, double rhs) -> double
                     {
-                        auto lhs = std::any_cast<Result>(args[0]).as<double>();
-                        auto rhs = std::any_cast<Result>(args[1]).as<double>();
+                        return lhs * rhs;
+                    }
+            );
+        }
 
-                        return static_cast<double>(
-                                static_cast<int>(lhs) % static_cast<int>(rhs)
-                        );
-                    }
-                    else
+        /* infix / */ {
+            context.bind_op(
+                    "/",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](int64_t lhs, int64_t rhs) -> int64_t
                     {
-                        throw std::invalid_argument("core::operator`%` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                        return lhs / rhs;
                     }
-                }
-        );
+            );
 
-        context.bind_op(
-                "+",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+            context.bind_op(
+                    "/",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](uint64_t lhs, uint64_t rhs) -> uint64_t
+                    {
+                        return lhs / rhs;
+                    }
+            );
 
-                    if (args.size() == 2)
+            context.bind_op(
+                    "/",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](double lhs, double rhs) -> double
                     {
-                        return std::any_cast<Result>(args[0]).as<double>()
-                             + std::any_cast<Result>(args[1]).as<double>();
+                        return lhs / rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`+` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
+        }
 
-        context.bind_op(
-                "-",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+        /* infix % */ {
+            context.bind_op(
+                    "%",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](int64_t lhs, int64_t rhs) -> int64_t
+                    {
+                        return lhs % rhs;
+                    }
+            );
 
-                    if (args.size() == 2)
+            context.bind_op(
+                    "%",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 30},
+                    [](uint64_t lhs, uint64_t rhs) -> uint64_t
                     {
-                        return std::any_cast<Result>(args[0]).as<double>()
-                             - std::any_cast<Result>(args[1]).as<double>();
+                        return lhs % rhs;
                     }
-                    else
+            );
+        }
+
+        /* infix + */ {
+            context.bind_op(
+                    "+",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
+                    [](int64_t lhs, int64_t rhs) -> int64_t
                     {
-                        throw std::invalid_argument("core::operator`-` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                        return lhs + rhs;
                     }
-                }
-        );
+            );
+
+            context.bind_op(
+                    "+",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
+                    [](uint64_t lhs, uint64_t rhs) -> uint64_t
+                    {
+                        return lhs + rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "+",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
+                    [](double lhs, double rhs) -> double
+                    {
+                        return lhs + rhs;
+                    }
+            );
+        }
+
+        /* infix - */ {
+            context.bind_op(
+                    "-",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
+                    [](int64_t lhs, int64_t rhs) -> int64_t
+                    {
+                        return lhs - rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "-",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
+                    [](uint64_t lhs, uint64_t rhs) -> uint64_t
+                    {
+                        return lhs - rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "-",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 40},
+                    [](double lhs, double rhs) -> double
+                    {
+                        return lhs - rhs;
+                    }
+            );
+        }
 
         // logic op
 
-        context.bind_op(
-                ">",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+        /* infix > */ {
+            context.bind_op(
+                    ">",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](int64_t lhs, int64_t rhs) -> bool
+                    {
+                        return lhs > rhs;
+                    }
+            );
 
-                    if (args.size() == 2)
+            context.bind_op(
+                    ">",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](uint64_t lhs, uint64_t rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        > std::any_cast<Result>(args[1]).as<double>());
+                        return lhs > rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`>` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
 
-        context.bind_op(
-                ">=",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+            context.bind_op(
+                    ">",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](double lhs, double rhs) -> bool
+                    {
+                        return lhs > rhs;
+                    }
+            );
+        }
 
-                    if (args.size() == 2)
+        /* infix >= */ {
+            context.bind_op(
+                    ">=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](int64_t lhs, int64_t rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        >= std::any_cast<Result>(args[1]).as<double>());
+                        return lhs >= rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`>=` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
 
-        context.bind_op(
-                "<",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+            context.bind_op(
+                    ">=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](uint64_t lhs, uint64_t rhs) -> bool
+                    {
+                        return lhs >= rhs;
+                    }
+            );
 
-                    if (args.size() == 2)
+            context.bind_op(
+                    ">=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](double lhs, double rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        < std::any_cast<Result>(args[1]).as<double>());
+                        return lhs >= rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`<` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
+        }
 
-        context.bind_op(
-                "<=",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+        /* infix < */ {
+            context.bind_op(
+                    "<",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](int64_t lhs, int64_t rhs) -> bool
+                    {
+                        return lhs < rhs;
+                    }
+            );
 
-                    if (args.size() == 2)
+            context.bind_op(
+                    "<",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](uint64_t lhs, uint64_t rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        <= std::any_cast<Result>(args[1]).as<double>());
+                        return lhs < rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`<=` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
 
-        context.bind_op(
-                "==",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+            context.bind_op(
+                    "<",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](double lhs, double rhs) -> bool
+                    {
+                        return lhs < rhs;
+                    }
+            );
+        }
 
-                    if (args.size() == 2)
+        /* infix <= */ {
+            context.bind_op(
+                    "<=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](int64_t lhs, int64_t rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        == std::any_cast<Result>(args[1]).as<double>());
+                        return lhs <= rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`==` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
 
-        context.bind_op(
-                "!=",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
+            context.bind_op(
+                    "<=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](uint64_t lhs, uint64_t rhs) -> bool
+                    {
+                        return lhs <= rhs;
+                    }
+            );
 
-                    if (args.size() == 2)
+            context.bind_op(
+                    "<=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](double lhs, double rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        != std::any_cast<Result>(args[1]).as<double>());
+                        return lhs <= rhs;
                     }
-                    else
+            );
+        }
+
+        /* infix == */ {
+            context.bind_op(
+                    "==",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](int64_t lhs, int64_t rhs) -> bool
                     {
-                        throw std::invalid_argument("core::operator`!=` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
+                        return lhs == rhs;
                     }
-                }
-        );
+            );
+
+            context.bind_op(
+                    "==",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](uint64_t lhs, uint64_t rhs) -> bool
+                    {
+                        return lhs == rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "==",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](double lhs, double rhs) -> bool
+                    {
+                        return lhs == rhs;
+                    }
+            );
+        }
+
+        /* infix != */ {
+            context.bind_op(
+                    "!=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](int64_t lhs, int64_t rhs) -> bool
+                    {
+                        return lhs != rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "!=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](uint64_t lhs, uint64_t rhs) -> bool
+                    {
+                        return lhs != rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "!=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](double lhs, double rhs) -> bool
+                    {
+                        return lhs != rhs;
+                    }
+            );
+        }
 
         // "&"  80
         // "^"  90
         // "|"  100
 
-        context.bind_op(
-                "&&",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 110},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 2)
+        /* infix && */ {
+            context.bind_op(
+                    "&&",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 110},
+                    [](bool lhs, bool rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        && std::any_cast<Result>(args[1]).as<double>());
+                        return lhs && rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`&&` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
+        }
 
-        context.bind_op(
-                "||",
-                {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 120},
-                [](std::vector<std::any> args) -> std::any
-                {
-                    using Result = runtime::result;
-
-                    if (args.size() == 2)
+        /* infix || */ {
+            context.bind_op(
+                    "||",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 120},
+                    [](bool lhs, bool rhs) -> bool
                     {
-                        return (double)(std::any_cast<Result>(args[0]).as<double>()
-                                        || std::any_cast<Result>(args[1]).as<double>());
+                        return lhs || rhs;
                     }
-                    else
-                    {
-                        throw std::invalid_argument("core::operator`||` requires 2 arguments, but "s + std::to_string(args.size()) + " passed!");
-                    }
-                }
-        );
+            );
+        }
 
+#if 1
         context.bind_func(
                 "if",
                 [](std::vector<std::any> args) -> std::any
@@ -436,14 +554,13 @@ struct F
 
                     if (args.size() == 3)
                     {
-                        constexpr auto False = 0.0;
-                        if (std::any_cast<Result>(args[0]).as<double>() != False)
+                        if (std::any_cast<bool>(args[0]) != false)
                         {
-                            return std::any_cast<Result>(args[1]).as<double>();
+                            return args[1];
                         }
                         else
                         {
-                            return std::any_cast<Result>(args[2]).as<double>();
+                            return args[2];
                         }
                     }
                     else
@@ -452,11 +569,11 @@ struct F
                     }
                 }
         );
-
+#endif
         // boolean constants
 
-        context.bind_var("true", 1.0);
-        context.bind_var("false", 0.0);
+        context.bind_var("true", true);
+        context.bind_var("false", false);
 
         return context;
     }
@@ -524,7 +641,7 @@ BOOST_AUTO_TEST_CASE(bind_callable)
         return a * 2;
     };
 
-    BOOST_TEST((ctx.eval("foo(4.0)") == 16.0));
+    BOOST_TEST((ctx.eval("foo(4.5)") == (4.5 * 4.5)));
     BOOST_TEST((ctx.eval("foo(4)") == 8LL));
 }
 

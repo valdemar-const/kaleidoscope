@@ -98,8 +98,8 @@ struct Module
             };
 
             static const Proc_Signature result {
-                typeid(Result),
-                get_args_signatures.template operator()<Args>()
+                    typeid(Result),
+                    get_args_signatures.template operator()<Args>()
             };
             return result;
         }
@@ -203,7 +203,7 @@ struct Module
         Functional(T &&body)
             : signature_(Proc_Signature::from<T>())
         {
-            type body_ = [callable = std::forward<T>(body)](std::vector<std::any> args) -> std::any
+            type call_handler = [callable = std::forward<T>(body)](std::vector<std::any> args) -> std::any
             {
                 using Callable         = std::decay_t<T>;
                 using Args             = boost::callable_traits::args_t<Callable>;
@@ -242,6 +242,8 @@ struct Module
                     throw std::runtime_error("Argument type error during functional call.");
                 }
             };
+
+            body_ = std::move(call_handler);
         }
 
         Functional(const Functional &)            = default;
@@ -266,7 +268,14 @@ struct Module
         std::any
         operator()(std::vector<std::any> args) const
         {
-            return body_(std::move(args));
+            if (body_)
+            {
+                return body_(std::move(args));
+            }
+            else
+            {
+                throw std::runtime_error("function not defined");
+            }
         }
 
         const sign &
@@ -283,7 +292,7 @@ struct Module
 
     struct Data_Object
     {
-        Data_Object(std::any value, Symbol_Key type)
+        Data_Object(std::any value, std::type_index type)
             : data_(value)
             , type_(type)
         {
@@ -306,7 +315,7 @@ struct Module
             return data_;
         }
 
-        Symbol_Key
+        std::type_index
         type(void) const
         {
             return type_;
@@ -314,8 +323,8 @@ struct Module
 
       protected:
 
-        std::any   data_;
-        Symbol_Key type_;
+        std::any        data_;
+        std::type_index type_;
     };
 
     struct Symbol
@@ -368,19 +377,32 @@ struct Module
     void
     link_static(const Module &m)
     {
-#if 0 // TODO: implement
-        identifiers.insert(m.identifiers.begin(), m.identifiers.end());
-        prefix_ops.insert(m.prefix_ops.begin(), m.prefix_ops.end());
-        infix_ops.insert(m.infix_ops.begin(), m.infix_ops.end());
-#endif
+        // импортировать символы из m которых нет в this
+        std::ranges::for_each(
+                m.lookup_cache_, [&, this](auto &&lookup_pair)
+                {
+                    auto &key                = lookup_pair.first;
+                    bool  is_already_defined = lookup_cache_.count(key);
+
+                    if (!is_already_defined)
+                    {
+                        symbols.emplace_back(m.symbols.at(lookup_pair.second));
+                        lookup_cache_.insert_or_assign(key, symbols.size() - 1);
+                    }
+                    else
+                    {
+                        volatile void *break_ = (void *)&key;
+                    }
+                }
+        );
+
+        op_properties_.merge(m.operators_info());
     }
 
     void
     link_shared(const Module &m)
     {
-#if 0 // TODO: implement
         linked.push_front(std::ref(m));
-#endif
     }
 
   public:
@@ -388,7 +410,12 @@ struct Module
     precedence
     operators_info(void) const
     {
-        return op_properties_;
+        precedence result = op_properties_;
+        for (auto &&module_ : linked | std::views::reverse)
+        {
+            result.merge(module_.get().operators_info());
+        }
+        return result;
     }
 
   public:
@@ -409,8 +436,7 @@ struct Module
         {
             for (auto &&module_ : linked | std::views::reverse)
             {
-                auto res = module_.get().find_symbol(key);
-                if (res)
+                if (auto res = module_.get().find_symbol(key))
                 {
                     return res;
                 }
@@ -420,6 +446,40 @@ struct Module
                 }
             }
         }
+        return nullptr;
+    }
+
+    const Type *
+    find_binded(std::type_index type_index) const
+    {
+        auto type_it = std::ranges::find_if(
+                symbols,
+                [search_id = type_index](auto &&sym)
+                {
+                    if (auto type_info = sym.template get_if<Type>())
+                    {
+                        return type_info->type_index() == search_id;
+                    }
+
+                    return false;
+                }
+        );
+
+        if (symbols.end() != type_it)
+        {
+            return (*type_it).template get_if<Type>();
+        }
+        else
+        {
+            for (auto &&module_ : linked | std::views::reverse)
+            {
+                if (auto type_ptr = module_.get().find_binded(type_index))
+                {
+                    return type_ptr;
+                }
+            }
+        }
+
         return nullptr;
     }
 
@@ -472,7 +532,8 @@ struct Module
         }
         else
         {
-            std::cout << "bind function: " << name << "(" << declaration_str << ")" << std::endl;
+            std::cout << "bind function: " << name << "(" << declaration_str << "): "
+                      << compiler::demangle(sign.result.name()) << std::endl;
 
             symbols.emplace_back(Symbol {Functional {std::forward<T>(value)}});
 
@@ -538,7 +599,9 @@ struct Module
         }
         else
         {
-            std::cout << "bind " << opkind_keyword << ": " << name << "(" << declaration_str << ")" << std::endl;
+            std::cout << "bind " << opkind_keyword << ": "
+                      << name << "(" << declaration_str << "): "
+                      << compiler::demangle(sign.result.name()) << std::endl;
 
             symbols.emplace_back(Symbol {Functional {std::forward<T>(value)}});
 
@@ -565,41 +628,41 @@ struct Module
 
         auto existed_data = lookup_cache_.find(Symbol_Key {.name = name, .kind = Symbol_Kind::DataObject});
 
-        auto type_it = std::ranges::find_if(
-                symbols,
-                [search_id = value_typeid](auto &&sym)
-                {
-                    if (auto type_info = sym.template get_if<Type>())
-                    {
-                        return type_info->type_index() == search_id;
-                    }
-
-                    return false;
-                }
-        );
-
-        if (type_it != symbols.end())
+        if (auto type_ptr = find_binded(value_typeid))
         {
-            auto type_info = (*type_it).template get_if<Type>();
-            value_typeid   = type_info->type_index();
+            auto &type_info = (*type_ptr);
+            value_typeid    = type_info.type_index();
         }
         else
         {
             throw std::runtime_error("binded value type unregistered: "s + compiler::demangle(value_typeid.name()));
         }
 
+#if 0
         auto type_key_it = std::ranges::find_if(
                 lookup_cache_, [type_idx = std::distance(symbols.begin(), type_it)](auto &&pair)
                 {
                     return pair.second == type_idx;
                 }
         );
+#endif
 
-        symbols.emplace_back(Symbol {Data_Object {{std::forward<T>(value)}, (*type_key_it).first}}); // FIXME: Symbol_Key вместо value_typeid
+        if (existed_data == lookup_cache_.end())
+        {
+            symbols.emplace_back(Symbol {Data_Object {std::forward<T>(value), value_typeid}}); // FIXME: Symbol_Key вместо value_typeid
 
-        Symbol_Key key {.name = name, .kind = Symbol_Kind::DataObject};
-        size_t     sym_idx = symbols.size() - 1;
-        lookup_cache_.insert_or_assign(std::move(key), sym_idx);
+            Symbol_Key key {.name = name, .kind = Symbol_Kind::DataObject};
+            size_t     sym_idx = symbols.size() - 1;
+            lookup_cache_.insert_or_assign(std::move(key), sym_idx);
+        }
+        else
+        {
+            auto sym_data = symbols.at((*existed_data).second);
+            if (auto as_data = sym_data.template get_if<Data_Object>())
+            {
+                as_data->data() = std::forward<T>(value);
+            }
+        }
 
         return *this;
     }

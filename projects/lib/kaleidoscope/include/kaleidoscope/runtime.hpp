@@ -343,7 +343,7 @@ runtime::eval_node::visit_(const ast::Functional_Call &node)
             Module::Symbol_Key {node.callee, Module::Symbol_Kind::Func, std::make_optional(sign)}
     );
 
-    if (auto as_func = func->template get_if<Module::Functional>())
+    if (auto as_func = (func) ? func->template get_if<Module::Functional>() : nullptr)
     {
         result_ = (*as_func)(std::move(args));
     }
@@ -359,8 +359,8 @@ runtime::eval_node::visit_(const ast::Operation_Infix &node)
     using namespace std::string_literals;
 
     std::vector<std::any> args;
-    args.emplace_back(eval(*node.lhs));
-    args.emplace_back(eval(*node.rhs));
+    args.emplace_back(eval(*node.lhs).unwrap());
+    args.emplace_back(eval(*node.rhs).unwrap());
 
     auto sign = std::accumulate(
             args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
@@ -370,8 +370,17 @@ runtime::eval_node::visit_(const ast::Operation_Infix &node)
             }
     );
 
+    auto declaration = std::accumulate(
+            sign.cbegin(), sign.cend(), std::string {}, [](auto acc, auto &&elem)
+            {
+                return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
+            }
+    );
+
+    std::cout << "scan for overload: infix" << node.op << "(" << declaration << ")" << std::endl;
+
     auto func = owner_.get().scope().find_symbol(Module::Symbol_Key {node.op, Module::Symbol_Kind::Infix, std::make_optional(sign)});
-    if (auto as_func = func->template get_if<Module::Functional>())
+    if (auto as_func = (func) ? func->template get_if<Module::Functional>() : nullptr)
     {
         result_ = (*as_func)(std::move(args));
     }
@@ -387,7 +396,7 @@ runtime::eval_node::visit_(const ast::Operation_Postfix &node)
     using namespace std::string_literals;
 
     std::vector<std::any> args;
-    args.emplace_back(eval(*node.operand));
+    args.emplace_back(eval(*node.operand).unwrap());
 
     auto sign = std::accumulate(
             args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
@@ -397,8 +406,17 @@ runtime::eval_node::visit_(const ast::Operation_Postfix &node)
             }
     );
 
+    auto declaration = std::accumulate(
+            sign.cbegin(), sign.cend(), std::string {}, [](auto acc, auto &&elem)
+            {
+                return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
+            }
+    );
+
+    std::cout << "scan for overload: postfix" << node.op << "(" << declaration << ")" << std::endl;
+
     auto func = owner_.get().scope().find_symbol(Module::Symbol_Key {node.op, Module::Symbol_Kind::Postfix, std::make_optional(sign)});
-    if (auto as_func = func->template get_if<Module::Functional>())
+    if (auto as_func = (func) ? func->template get_if<Module::Functional>() : nullptr)
     {
         result_ = (*as_func)(std::move(args));
     }
@@ -414,7 +432,7 @@ runtime::eval_node::visit_(const ast::Operation_Prefix &node)
     using namespace std::string_literals;
 
     std::vector<std::any> args;
-    args.emplace_back(eval(*node.operand));
+    args.emplace_back(eval(*node.operand).unwrap());
 
     auto sign = std::accumulate(
             args.cbegin(), args.cend(), Module::Proc_Signature::Args {}, [](auto acc, auto &&elem)
@@ -424,8 +442,17 @@ runtime::eval_node::visit_(const ast::Operation_Prefix &node)
             }
     );
 
+    auto declaration = std::accumulate(
+            sign.cbegin(), sign.cend(), std::string {}, [](auto acc, auto &&elem)
+            {
+                return (acc.empty()) ? compiler::demangle(elem.name()) : acc + ", " + compiler::demangle(elem.name());
+            }
+    );
+
+    std::cout << "scan for overload: prefix" << node.op << "(" << declaration << ")" << std::endl;
+
     auto func = owner_.get().scope().find_symbol(Module::Symbol_Key {node.op, Module::Symbol_Kind::Prefix, std::make_optional(sign)});
-    if (auto as_func = func->template get_if<Module::Functional>())
+    if (auto as_func = (func) ? func->template get_if<Module::Functional>() : nullptr)
     {
         result_ = (*as_func)(std::move(args));
     }
@@ -448,7 +475,7 @@ runtime::eval_node::visit_(const ast::Data_Object_Definition_List &node)
         if (auto type_ = dynamic_cast<ast::Type_Declaration *>(node.type.get()))
         {
             auto sym_type = owner_.get().scope().find_symbol(Module::Symbol_Key {type_->name, Module::Symbol_Kind::Type});
-            if (auto as_type = sym_type->template get_if<Module::Type>())
+            if (auto as_type = (sym_type) ? sym_type->template get_if<Module::Type>() : nullptr)
             {
                 init_value = (*as_type).get_default();
             }
