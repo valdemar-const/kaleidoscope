@@ -372,6 +372,15 @@ struct F
                         return lhs > rhs;
                     }
             );
+
+            context.bind_op(
+                    ">",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](std::string lhs, std::string rhs) -> bool
+                    {
+                        return lhs > rhs;
+                    }
+            );
         }
 
         /* infix >= */ {
@@ -397,6 +406,15 @@ struct F
                     ">=",
                     {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
                     [](double lhs, double rhs) -> bool
+                    {
+                        return lhs >= rhs;
+                    }
+            );
+
+            context.bind_op(
+                    ">=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](std::string lhs, std::string rhs) -> bool
                     {
                         return lhs >= rhs;
                     }
@@ -430,6 +448,15 @@ struct F
                         return lhs < rhs;
                     }
             );
+
+            context.bind_op(
+                    "<",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](std::string lhs, std::string rhs) -> bool
+                    {
+                        return lhs < rhs;
+                    }
+            );
         }
 
         /* infix <= */ {
@@ -455,6 +482,15 @@ struct F
                     "<=",
                     {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
                     [](double lhs, double rhs) -> bool
+                    {
+                        return lhs <= rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "<=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 60},
+                    [](std::string lhs, std::string rhs) -> bool
                     {
                         return lhs <= rhs;
                     }
@@ -488,6 +524,15 @@ struct F
                         return lhs == rhs;
                     }
             );
+
+            context.bind_op(
+                    "==",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](std::string lhs, std::string rhs) -> bool
+                    {
+                        return lhs == rhs;
+                    }
+            );
         }
 
         /* infix != */ {
@@ -513,6 +558,15 @@ struct F
                     "!=",
                     {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
                     [](double lhs, double rhs) -> bool
+                    {
+                        return lhs != rhs;
+                    }
+            );
+
+            context.bind_op(
+                    "!=",
+                    {.kind = Kind::Infix, .associativity = Associativity::Left, .precedence = 70},
+                    [](std::string lhs, std::string rhs) -> bool
                     {
                         return lhs != rhs;
                     }
@@ -545,7 +599,7 @@ struct F
             );
         }
 
-#if 1
+#if 1 // необходимо вычислить в runtime, а не bind функцией: function if (<expr>, <result_truly>, <result_falsy>): typeof(<result_truly>);
         context.bind_func(
                 "if",
                 [](std::vector<std::any> args) -> std::any
@@ -570,6 +624,8 @@ struct F
                 }
         );
 #endif
+        // string utils
+
         // boolean constants
 
         context.bind_var("true", true);
@@ -624,6 +680,13 @@ BOOST_AUTO_TEST_CASE(declare_variables)
 
         ctx.eval("var num_2: f64");
         BOOST_TEST((ctx.eval("num_2") == 0.0));
+
+        ctx.eval("var greeting: string = \"Hello, Skif!\"");
+        BOOST_TEST((ctx.eval("greeting") == "Hello, Skif!"s));
+
+        BOOST_TEST((ctx.eval("strlen(greeting)") == "Hello, Skif!"s.size()));
+
+        BOOST_TEST((ctx.eval("\"#{num}, #{greeting}\"") == std::format("{}, {}", 5.0, "Hello, Skif!"s)));
     }
     ctx.pop_scope();
 }
@@ -635,7 +698,7 @@ BOOST_AUTO_TEST_CASE(bind_callable)
     {
         return a * a;
     };
-    // function foo(a: i32): i32;
+    // function foo(a: i64): i64;
     ctx["foo"] = [](int64_t a) -> int64_t
     {
         return a * 2;
@@ -643,6 +706,14 @@ BOOST_AUTO_TEST_CASE(bind_callable)
 
     BOOST_TEST((ctx.eval("foo(4.5)") == (4.5 * 4.5)));
     BOOST_TEST((ctx.eval("foo(4)") == 8LL));
+
+    ctx.eval("var x: f64 = 42.5");
+    ctx.push_scope();
+    {
+        BOOST_TEST((ctx.eval("x * x == foo(x)") == true));
+        BOOST_TEST((ctx.eval("x * x != foo(x)") == false));
+    }
+    ctx.pop_scope();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
